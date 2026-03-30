@@ -1,35 +1,30 @@
 import { USER_ROLE } from './user.constants';
-import { getCounterModel } from './counter.model';
+import { Counter } from './counter.model';
 
 export const generateUserId = async (role: string) => {
   let prefix = '';
   let counterId = '';
 
   switch (role) {
-    case USER_ROLE.customer:
-      prefix = 'C-';
-      counterId = 'customer_id';
-      break;
     case USER_ROLE.admin:
-      prefix = 'A-';
+    case USER_ROLE.manager:
+      prefix = 'A-'; // Grouping all staff under 'A-' for Admin/Staff Profile
       counterId = 'admin_id';
       break;
     case USER_ROLE.super_admin:
       prefix = 'SA-';
       counterId = 'super_admin_id';
       break;
+    case 'customer':
+      prefix = 'C-';
+      counterId = 'customer_id';
+      break;
     default:
       prefix = 'U-';
       counterId = 'user_id';
   }
 
-  const CounterModel = getCounterModel();
-
-  const result = await CounterModel.findByIdAndUpdate(
-    { _id: counterId },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true },
-  );
+  const result = await Counter.findByIdAndUpdate({ _id: counterId }, { $inc: { seq: 1 } }, { new: true, upsert: true });
 
   // Pad with zeros (e.g., 5 -> 00005)
   // Ensure result isn't null (upsert handles it, but TS might complain)

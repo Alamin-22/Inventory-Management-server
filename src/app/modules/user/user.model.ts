@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
-import { Schema, Connection } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 import { TUser, TUserModel } from './user.interface';
 import bcrypt from 'bcrypt';
 import { config } from '@config/env';
@@ -11,10 +11,8 @@ const userSchema = new Schema<TUser, TUserModel>(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: false, select: 0 },
     needsPasswordChange: { type: Boolean, default: false },
-    role: { type: String, enum: Object.keys(USER_ROLE), default: USER_ROLE.customer },
+    role: { type: String, enum: Object.keys(USER_ROLE), default: USER_ROLE.manager },
     status: { type: String, enum: Object.keys(USER_STATUS), default: USER_STATUS.active },
-    authProvider: { type: String, enum: ['email', 'google', 'facebook'], default: 'email' },
-    storePreference: { type: String, enum: ['bringByAir', 'pandaBD'], default: 'bringByAir' },
     passwordChangedAt: { type: Date },
     lastActive: { type: Date },
     isVerified: { type: Boolean, default: false },
@@ -28,13 +26,6 @@ const userSchema = new Schema<TUser, TUserModel>(
 );
 
 // --- Virtuals ---
-userSchema.virtual('customerProfile', {
-  ref: 'Customer',
-  localField: '_id',
-  foreignField: 'user',
-  justOne: true,
-});
-
 userSchema.virtual('adminProfile', {
   ref: 'Admin',
   localField: '_id',
@@ -46,7 +37,7 @@ userSchema.virtual('adminProfile', {
 userSchema.pre('save', async function (next) {
   const user = this;
   if (!user.isModified('password')) return next();
-  user.password = await bcrypt.hash(user.password!, Number(config.bcrypt_salt_rounds));
+  user.password = await bcrypt.hash(user.password!, Number(config.bcryptSaltRounds));
   next();
 });
 
@@ -76,10 +67,4 @@ userSchema.statics.isJWTIssuedBeforePasswordChanged = function (
   return passwordChangedTime > jwtIssuedTimestamp;
 };
 
-export const getUserModel = (connection: Connection) => {
-  // Prevent recompiling model if it already exists on this connection
-  if (connection.models.User) {
-    return connection.models.User as TUserModel;
-  }
-  return connection.model<TUser, TUserModel>('User', userSchema);
-};
+export const User = mongoose.model<TUser, TUserModel>('User', userSchema);
