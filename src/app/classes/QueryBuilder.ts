@@ -155,7 +155,7 @@ export class QueryBuilder<T> {
 
     const mongoQueryObject: Record<string, any> = {};
 
-    const arrayIdFields = ['category', 'tags', 'badges', 'frequentlyBoughtTogether', 'verifiedBrandId'];
+    const arrayIdFields = ['category', 'products', 'orderItems', 'supplier'];
 
     for (const key in queryObj) {
       let value = queryObj[key];
@@ -205,13 +205,16 @@ export class QueryBuilder<T> {
 
     const transformedQuery = transformOperators(mongoQueryObject);
 
-    // custom price range mapping
     const minPrice = this.queryObj.min_price;
     const maxPrice = this.queryObj.max_price;
 
     if (minPrice !== undefined || maxPrice !== undefined) {
-      transformedQuery.defaultPriceBDT = {
-        ...(transformedQuery.defaultPriceBDT || {}),
+      // Assuming 'price' or 'totalPrice' will be the standard number field you want to filter
+      // You can pass the specific field name via query, or default to 'totalPrice'
+      const targetField = this.queryObj.priceField || 'totalPrice';
+
+      transformedQuery[targetField] = {
+        ...(transformedQuery[targetField] || {}),
         ...(minPrice !== undefined && minPrice !== '' ? { $gte: Number(minPrice) } : {}),
         ...(maxPrice !== undefined && maxPrice !== '' ? { $lte: Number(maxPrice) } : {}),
       };

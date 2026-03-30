@@ -4,10 +4,19 @@ import sendResponse from '@utils/sendResponse';
 import httpStatus from 'http-status';
 import { catchAsync } from '@utils/catchAsync';
 
-const getAllCustomers: RequestHandler = catchAsync(async (req, res) => {
-  const customerService = CustomerServices(req.dbConnection);
+const createCustomer: RequestHandler = catchAsync(async (req, res) => {
+  const result = await CustomerServices.createCustomer(req.body);
 
-  const result = await customerService.getAllCustomers(req.query);
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: 'Customer CRM profile created successfully',
+    data: result,
+  });
+});
+
+const getAllCustomers: RequestHandler = catchAsync(async (req, res) => {
+  const result = await CustomerServices.getAllCustomers(req.query);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -18,10 +27,7 @@ const getAllCustomers: RequestHandler = catchAsync(async (req, res) => {
 });
 
 const getSingleCustomer: RequestHandler = catchAsync(async (req, res) => {
-  const { id } = req.params;
-
-  const customerService = CustomerServices(req.dbConnection);
-  const result = await customerService.getSingleCustomer(id);
+  const result = await CustomerServices.getSingleCustomer(req.params.id);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -32,9 +38,7 @@ const getSingleCustomer: RequestHandler = catchAsync(async (req, res) => {
 });
 
 const updateCustomer: RequestHandler = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const customerService = CustomerServices(req.dbConnection);
-  const result = await customerService.updateCustomer(id, req.body);
+  const result = await CustomerServices.updateCustomer(req.params.id, req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -45,9 +49,7 @@ const updateCustomer: RequestHandler = catchAsync(async (req, res) => {
 });
 
 const deleteCustomer: RequestHandler = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const customerService = CustomerServices(req.dbConnection);
-  const result = await customerService.deleteCustomer(id);
+  const result = await CustomerServices.deleteCustomer(req.params.id);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -58,6 +60,7 @@ const deleteCustomer: RequestHandler = catchAsync(async (req, res) => {
 });
 
 export const CustomerControllers = {
+  createCustomer,
   getAllCustomers,
   getSingleCustomer,
   updateCustomer,

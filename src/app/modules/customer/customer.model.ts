@@ -1,13 +1,13 @@
-import { Query, Schema, Document, Connection } from 'mongoose';
+import mongoose, { Query, Schema, Document } from 'mongoose';
 import { ICustomer, TCustomerModel } from './customer.interface';
 
 const addressSchema = new Schema(
   {
-    address: { type: String, default: '' },
-    country: { type: String, default: '' },
+    street: { type: String, default: '' },
     city: { type: String, default: '' },
     state: { type: String, default: '' },
     zipCode: { type: String, default: '' },
+    country: { type: String, default: '' },
   },
   { _id: false },
 );
@@ -15,42 +15,23 @@ const addressSchema = new Schema(
 const customerSchema = new Schema<ICustomer, TCustomerModel>(
   {
     id: { type: String, required: true, unique: true },
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      unique: true,
-    },
-    name: { type: String, required: true },
-    email: { type: String, required: true },
-    contactNo: { type: String },
-    profileImg: {
-      url: { type: String },
-      publicId: { type: String },
-    },
-    storePreference: {
-      type: String,
-      enum: ['bringByAir', 'pandaBD'],
-      default: 'bringByAir',
-    },
+    name: { type: String, required: true, default: 'Walk-in Customer' },
+    contactNo: { type: String, required: true, unique: true },
+    email: { type: String, sparse: true },
 
-    billingAddress: {
-      type: addressSchema,
-      default: () => ({}),
-    },
-    shippingAddress: {
-      type: addressSchema,
-      default: () => ({}),
-    },
+    customerType: { type: String, enum: ['retail', 'wholesale', 'corporate'], default: 'retail' },
+    companyName: { type: String },
+    taxId: { type: String },
+
+    billingAddress: { type: addressSchema, default: () => ({}) },
+    shippingAddress: { type: addressSchema, default: () => ({}) },
+
+    totalOrders: { type: Number, default: 0 },
     isDeleted: { type: Boolean, default: false },
   },
-  {
-    timestamps: true,
-    toJSON: { virtuals: true },
-  },
+  { timestamps: true, toJSON: { virtuals: true } },
 );
 
-// Query Middleware to hide deleted customers
 customerSchema.pre(/^find/, function (this: Query<ICustomer, Document>, next) {
   this.find({ isDeleted: { $ne: true } });
   next();
@@ -60,9 +41,4 @@ customerSchema.statics.isCustomerExists = async function (id: string) {
   return await this.findOne({ id });
 };
 
-export const getCustomerModel = (connection: Connection) => {
-  if (connection.models.Customer) {
-    return connection.models.Customer as TCustomerModel;
-  }
-  return connection.model<ICustomer, TCustomerModel>('Customer', customerSchema);
-};
+export const Customer = mongoose.model<ICustomer, TCustomerModel>('Customer', customerSchema);
