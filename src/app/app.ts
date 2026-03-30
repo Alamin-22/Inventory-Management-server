@@ -2,11 +2,10 @@ import express, { NextFunction, Request, Response } from 'express';
 import http from 'http';
 import { config } from '@config/env';
 import { globalErrorHandler, initialMiddlewares } from './middlewares';
-import { tenantResolver } from './middlewares/tenantResolver';
-import { initSocketServer } from './modules/socket';
 import mainRouter from './main-router';
 import { AppError } from './classes/AppError';
 import { fileCleanupOnError } from './middlewares/fileCleanupOnError';
+import mongoose from 'mongoose';
 
 const app = express();
 export const server = http.createServer(app);
@@ -14,20 +13,14 @@ export const server = http.createServer(app);
 // Initialize Standard Middlewares (CORS, BodyParser, CookieParser)
 initialMiddlewares(app);
 
-// Initialize Tenant Resolver (Must be BEFORE routes)
-// This attaches req.dbConnection and req.brand to every request
-app.use(tenantResolver);
-
-//  Initialize Socket Server
-// Note: Currently defaulting to BBA URL. We can make this dynamic later if needed.
-export const io = initSocketServer(server, config.client.bringByAir.url, config.redisUrl);
+// Initialize Socket Server
+// export const io = initSocketServer(server, config.clientUrl);
 
 // Root route
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
   res.send({
-    message: 'Dual-Core Server is Running',
-    connectedBrand: req.brand,
-    dbState: req.dbConnection?.readyState === 1 ? 'Connected' : 'Disconnected',
+    message: 'Inventory Management API is Running',
+    dbState: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
   });
 });
 
@@ -35,7 +28,7 @@ app.get('/health', (_, res: Response) => {
   res.send('Server is Working properly');
 });
 
-//  this is the main api versioned route
+// Main API versioned route
 app.use(`/api/${config.apiVersion}`, mainRouter);
 
 app.use(fileCleanupOnError);
