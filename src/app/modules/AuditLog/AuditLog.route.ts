@@ -2,7 +2,7 @@ import express from 'express';
 import AuthValidationMiddleWare from '@app/middlewares/AuthValidationMiddleWare';
 import CheckAuthPermissionMiddleware from '@app/middlewares/CheckAuthPermissionMiddleware';
 import { USER_ROLE } from '../user/user.constants';
-import { AdminPermissions } from '../admin/admin.constants';
+import { AdminPermissions } from '../admin/admin.constant';
 import { AuditLogControllers } from './AuditLog.controller';
 
 const router = express.Router();

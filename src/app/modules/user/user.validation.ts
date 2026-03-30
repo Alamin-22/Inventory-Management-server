@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AdminPermissions } from '../admin/admin.constants';
+import { AdminPermissions } from '../admin/admin.constant';
 
 // Customer Validation
 const createCustomerValidationSchema = z.object({

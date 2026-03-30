@@ -14,7 +14,7 @@ import { sendEmail } from '@utils/sendEmail';
 import { generateVerificationLink } from '../auth/auth.utils';
 import { verificationEmailTemplate } from '@app/Email_Templates/Authentication-Related/verificationEmail.template';
 import generateAvatar from '@utils/generateAvatar';
-import { AdminPermissions } from '../admin/admin.constants';
+import { AdminPermissions } from '../admin/admin.constant';
 import type { JwtPayload } from 'jsonwebtoken';
 import { TBrand } from '../auth/auth.interface';
 import { getBrandConfig } from '../Order/Order.email';

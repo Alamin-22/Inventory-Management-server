@@ -1,19 +1,16 @@
-import { Schema, Query, Document, Connection } from 'mongoose';
+import mongoose, { Schema, Query, Document } from 'mongoose';
 import { IAdmin, TAdminModel } from './admin.interface';
-import { AdminPermissions } from './admin.constants';
+import { AdminPermissions } from './admin.constant';
 
 const adminSchema = new Schema<IAdmin, TAdminModel>(
   {
     id: { type: String, required: true, unique: true },
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      unique: true,
-    },
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     contactNo: { type: String, required: true },
+
     profileImg: {
       url: { type: String },
       publicId: { type: String },
@@ -34,7 +31,6 @@ const adminSchema = new Schema<IAdmin, TAdminModel>(
   },
 );
 
-// Query Middleware to hide deleted admins
 adminSchema.pre(/^find/, function (this: Query<IAdmin, Document>, next) {
   this.find({ isDeleted: { $ne: true } });
   next();
@@ -44,9 +40,4 @@ adminSchema.statics.isAdminExists = async function (id: string) {
   return await this.findOne({ id });
 };
 
-export const getAdminModel = (connection: Connection) => {
-  if (connection.models.Admin) {
-    return connection.models.Admin as TAdminModel;
-  }
-  return connection.model<IAdmin, TAdminModel>('Admin', adminSchema);
-};
+export const Admin = mongoose.model<IAdmin, TAdminModel>('Admin', adminSchema);

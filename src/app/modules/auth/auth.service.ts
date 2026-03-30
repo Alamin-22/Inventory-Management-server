@@ -21,7 +21,7 @@ import { getCustomerModel } from '../customer/customer.model';
 import ForgotPasswordTemplate from '@app/Email_Templates/Authentication-Related/forgotPassword.template';
 import { NewsLetterService } from '../Promotions/NewsLetter/NewsLetter.service';
 import { getAdminModel } from '../admin/admin.model';
-import { TAdminPermission } from '../admin/admin.constants';
+import { TAdminPermission } from '../admin/admin.constant';
 
 const sanitizeUser = (user: any) => {
   const userObj = user.toObject ? user.toObject() : user;
