@@ -1,36 +1,36 @@
-import { Connection } from 'mongoose';
+import mongoose from 'mongoose';
 import { config } from '@config/env';
-import { getUserModel } from '../user/user.model';
-import { getAdminModel } from '../admin/admin.model';
+import { User } from '../user/user.model';
+import { Admin } from '../admin/admin.model';
 import { USER_ROLE, USER_STATUS } from '../user/user.constants';
 import { generateUserId } from '../user/user.utils';
+import { AdminPermissions } from '../admin/admin.constant';
 
-export const seedSuperAdmin = async (connection: Connection, brand: 'bringByAir' | 'pandaBD') => {
+export const seedSuperAdmin = async () => {
   try {
-    //  Initialize Models on this specific connection
-    const UserModel = getUserModel(connection);
-    const AdminModel = getAdminModel(connection);
-
-    //  Check if Super Admin already exists
     const superAdminEmail = config.superAdminEmail;
-    const isSuperAdminExists = await UserModel.findOne({
+
+    // 1. Check if Super Admin already exists
+    const isSuperAdminExists = await User.findOne({
       role: USER_ROLE.super_admin,
       email: superAdminEmail,
     });
 
     if (isSuperAdminExists) {
-      return; // Already exists, skip
+      console.log('⚡ Super Admin already exists. Skipping seed.');
+      return;
     }
 
-    // Start Transaction on THIS connection
-    const session = await connection.startSession();
+    // 2. Start Transaction
+    const session = await mongoose.startSession();
 
     try {
       session.startTransaction();
 
-      const customId = await generateUserId(USER_ROLE.super_admin, connection);
+      // Generate ID (will be SA-00001)
+      const customId = await generateUserId(USER_ROLE.super_admin);
 
-      //  Create User
+      // 3. Create Auth User Record
       const userData = {
         id: customId,
         email: superAdminEmail,
@@ -39,39 +39,37 @@ export const seedSuperAdmin = async (connection: Connection, brand: 'bringByAir'
         role: USER_ROLE.super_admin,
         status: USER_STATUS.active,
         isVerified: true,
-        storePreference: brand,
       };
 
-      const newUser = await UserModel.create([userData], { session });
+      const newUser = await User.create([userData], { session });
 
       if (!newUser.length) {
-        throw new Error('Failed to create Super Admin User');
+        throw new Error('Failed to create Super Admin Auth Record');
       }
 
-      // 5. Create Admin Profile
+      // 4. Create Admin Profile Record
       const adminData = {
         id: customId,
         user: newUser[0]._id,
-        name: { firstName: 'Super', lastName: 'Admin' },
+        name: 'System Admin',
         email: superAdminEmail,
         contactNo: '+8801000000000',
-        managementSection: 'Root',
-        permissions: ['super_access'], // Full access
+        permissions: [AdminPermissions.FULL_ACCESS],
       };
 
-      const newAdmin = await AdminModel.create([adminData], { session });
+      const newAdmin = await Admin.create([adminData], { session });
 
       if (!newAdmin.length) {
         throw new Error('Failed to create Super Admin Profile');
       }
 
       await session.commitTransaction();
-      console.log(`✅ Super Admin seeded in DB!`);
+      console.log(`✅ Super Admin seeded successfully!`);
     } catch (error) {
       await session.abortTransaction();
       throw error;
     } finally {
-      session.endSession();
+      await session.endSession();
     }
   } catch (error) {
     console.error('❌ Super Admin seeding error:', error);
