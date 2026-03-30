@@ -1,0 +1,184 @@
+src/
+└── app/
+    ├── app.ts
+    ├── main-router/
+    │   └── index.ts
+
+    ├── middlewares/
+    │   ├── tenantResolver.ts
+    │   ├── AuthValidationMiddleWare.ts
+    │   ├── checkPermission.ts
+    │   ├── globalErrorHandler.ts
+    │   └── ...
+
+    ├── modules/
+
+    │   # (A) Foundation / Core (must be solid first)
+    │   ├── tenant/
+    │   │   ├── tenant.constants.ts
+    │   │   ├── tenant.interface.ts
+    │   │   ├── tenant.service.ts
+    │   │   └── tenant.utils.ts
+    │   ├── brand/
+    │   │   ├── brand.constants.ts
+    │   │   ├── brand.interface.ts
+    │   │   ├── brand.service.ts
+    │   │   └── brand.utils.ts
+    │   ├── media/
+    │   │   ├── media.controller.ts
+    │   │   ├── media.model.ts
+    │   │   ├── media.route.ts
+    │   │   ├── media.service.ts
+    │   │   └── media.type.ts
+
+    │   # (B) Identity / Access
+    │   ├── auth/
+    │   │   ├── auth.controller.ts
+    │   │   ├── auth.route.ts
+    │   │   ├── auth.service.ts
+    │   │   ├── auth.interface.ts
+    │   │   ├── auth.validation.ts
+    │   │   └── auth.utils.ts
+    │   ├── user/
+    │   │   ├── user.model.ts
+    │   │   ├── user.controller.ts
+    │   │   ├── user.route.ts
+    │   │   ├── user.service.ts
+    │   │   ├── user.validation.ts
+    │   │   └── user.type.ts
+    │   ├── customer/
+    │   │   ├── customer.model.ts
+    │   │   ├── customer.controller.ts
+    │   │   ├── customer.route.ts
+    │   │   ├── customer.service.ts
+    │   │   ├── customer.validation.ts
+    │   │   └── customer.type.ts
+    │   ├── admin/
+    │   │   ├── admin.model.ts
+    │   │   ├── admin.controller.ts
+    │   │   ├── admin.route.ts
+    │   │   ├── admin.service.ts
+    │   │   ├── admin.validation.ts
+    │   │   └── admin.constants.ts
+
+    │   # (C) Catalog = Phase 3 "Product Engine"
+    │   ├── catalogProduct/                  # master product catalog (storefront products)
+    │   │   ├── catalogProduct.model.ts
+    │   │   ├── catalogProduct.controller.ts
+    │   │   ├── catalogProduct.route.ts
+    │   │   ├── catalogProduct.service.ts
+    │   │   ├── catalogProduct.validation.ts
+    │   │   ├── catalogProduct.type.ts
+    │   │   └── catalogProduct.constants.ts
+    │   ├── productIngestion/               # unified ingestion: scrape today, Amazon API later
+    │   │   ├── productIngestion.model.ts   # stores raw items + source metadata
+    │   │   ├── productIngestion.controller.ts
+    │   │   ├── productIngestion.route.ts
+    │   │   ├── productIngestion.service.ts
+    │   │   ├── productIngestion.validation.ts
+    │   │   └── productIngestion.type.ts
+    │   ├── productSync/                    # raw -> catalog pipeline (normalize, upsert, link)
+    │   │   ├── productSync.controller.ts
+    │   │   ├── productSync.route.ts
+    │   │   ├── productSync.service.ts
+    │   │   ├── productSync.type.ts
+    │   │   └── productSync.utils.ts
+    │   ├── category/
+    │   │   ├── category.model.ts
+    │   │   ├── category.controller.ts
+    │   │   ├── category.route.ts
+    │   │   ├── category.service.ts
+    │   │   ├── category.validation.ts
+    │   │   └── category.type.ts
+    │   ├── attribute/
+    │   │   ├── attribute.model.ts
+    │   │   ├── attribute.controller.ts
+    │   │   ├── attribute.route.ts
+    │   │   ├── attribute.service.ts
+    │   │   ├── attribute.validation.ts
+    │   │   └── attribute.type.ts
+    │   ├── badge/                          # optional (from your other project)
+    │   │   ├── badge.model.ts
+    │   │   ├── badge.controller.ts
+    │   │   ├── badge.route.ts
+    │   │   ├── badge.service.ts
+    │   │   ├── badge.validation.ts
+    │   │   └── badge.type.ts
+    │   ├── collection/                     # featured collections/home sections
+    │   │   ├── collection.model.ts
+    │   │   ├── collection.controller.ts
+    │   │   ├── collection.route.ts
+    │   │   ├── collection.service.ts
+    │   │   ├── collection.validation.ts
+    │   │   └── collection.type.ts
+    │   ├── review/
+    │   ├── wishlist/
+
+    │   # (D) Buy Flow = Cart -> Order -> Payment
+    │   ├── cart/
+    │   ├── order/
+    │   ├── payment/
+    │   ├── coupon/
+    │   ├── transaction/                    # optional but recommended (ledger-like records)
+
+    │   # (E) Fulfillment = Phase 4+ "Dropship Operations"
+    │   ├── procurement/                    # supplier purchase order + costs
+    │   │   ├── procurement.model.ts
+    │   │   ├── procurement.controller.ts
+    │   │   ├── procurement.route.ts
+    │   │   ├── procurement.service.ts
+    │   │   ├── procurement.validation.ts
+    │   │   └── procurement.type.ts
+    │   ├── warehouse/
+    │   │   ├── warehouse.model.ts
+    │   │   ├── warehouse.controller.ts
+    │   │   ├── warehouse.route.ts
+    │   │   ├── warehouse.service.ts
+    │   │   ├── warehouse.validation.ts
+    │   │   └── warehouse.type.ts
+    │   ├── shipment/
+    │   │   ├── shipment.model.ts
+    │   │   ├── shipment.controller.ts
+    │   │   ├── shipment.route.ts
+    │   │   ├── shipment.service.ts
+    │   │   ├── shipment.validation.ts
+    │   │   └── shipment.type.ts
+    │   ├── tracking/
+    │   │   ├── tracking.model.ts
+    │   │   ├── tracking.controller.ts
+    │   │   ├── tracking.route.ts
+    │   │   ├── tracking.service.ts
+    │   │   ├── tracking.validation.ts
+    │   │   └── tracking.type.ts
+    │   ├── returnRequests/
+
+    │   # (F) Marketing / Growth (includes GroupBy)
+    │   ├── campaign/                       # campaign rules (normal + GroupBy type)
+    │   │   ├── campaign.model.ts
+    │   │   ├── campaign.controller.ts
+    │   │   ├── campaign.route.ts
+    │   │   ├── campaign.service.ts
+    │   │   ├── campaign.validation.ts
+    │   │   └── campaign.type.ts
+    │   ├── groupLobby/                     # GroupBy runtime state machine
+    │   │   ├── groupLobby.model.ts
+    │   │   ├── groupLobby.controller.ts
+    │   │   ├── groupLobby.route.ts
+    │   │   ├── groupLobby.service.ts
+    │   │   ├── groupLobby.validation.ts
+    │   │   └── groupLobby.type.ts
+    │   ├── notification/
+    │   ├── blog/
+    │   ├── siteContent/                    # banners, sliders, pages (if you add it)
+
+    │   # (G) Admin Insights / Ops Tools
+    │   ├── analytics/
+    │   ├── supportTicket/                  # help desk (future)
+    │   │   ├── supportTicket.model.ts
+    │   │   ├── supportTicket.controller.ts
+    │   │   ├── supportTicket.route.ts
+    │   │   ├── supportTicket.service.ts
+    │   │   ├── supportTicket.validation.ts
+    │   │   └── supportTicket.type.ts
+
+    └── ...

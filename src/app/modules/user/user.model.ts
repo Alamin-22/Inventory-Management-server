@@ -1,0 +1,85 @@
+/* eslint-disable @typescript-eslint/no-this-alias */
+import { Schema, Connection } from 'mongoose';
+import { TUser, TUserModel } from './user.interface';
+import bcrypt from 'bcrypt';
+import { config } from '@config/env';
+import { USER_ROLE, USER_STATUS } from './user.constants';
+
+const userSchema = new Schema<TUser, TUserModel>(
+  {
+    id: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: false, select: 0 },
+    needsPasswordChange: { type: Boolean, default: false },
+    role: { type: String, enum: Object.keys(USER_ROLE), default: USER_ROLE.customer },
+    status: { type: String, enum: Object.keys(USER_STATUS), default: USER_STATUS.active },
+    authProvider: { type: String, enum: ['email', 'google', 'facebook'], default: 'email' },
+    storePreference: { type: String, enum: ['bringByAir', 'pandaBD'], default: 'bringByAir' },
+    passwordChangedAt: { type: Date },
+    lastActive: { type: Date },
+    isVerified: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
+  },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  },
+);
+
+// --- Virtuals ---
+userSchema.virtual('customerProfile', {
+  ref: 'Customer',
+  localField: '_id',
+  foreignField: 'user',
+  justOne: true,
+});
+
+userSchema.virtual('adminProfile', {
+  ref: 'Admin',
+  localField: '_id',
+  foreignField: 'user',
+  justOne: true,
+});
+
+// --- Hooks ---
+userSchema.pre('save', async function (next) {
+  const user = this;
+  if (!user.isModified('password')) return next();
+  user.password = await bcrypt.hash(user.password!, Number(config.bcrypt_salt_rounds));
+  next();
+});
+
+userSchema.post('save', function (doc, next) {
+  doc.password = '';
+  next();
+});
+
+// --- Statics ---
+userSchema.statics.isUserExistByEmail = async function (email: string) {
+  return await this.findOne({ email }).select('+password');
+};
+
+userSchema.statics.isUserExistByCustomId = async function (id: string) {
+  return await this.findOne({ id }).select('+password');
+};
+
+userSchema.statics.isPasswordMatched = async function (plainTextPassword, hashedPassword) {
+  return await bcrypt.compare(plainTextPassword, hashedPassword);
+};
+
+userSchema.statics.isJWTIssuedBeforePasswordChanged = function (
+  passwordChangedTimestamp: Date,
+  jwtIssuedTimestamp: number,
+) {
+  const passwordChangedTime = new Date(passwordChangedTimestamp).getTime() / 1000;
+  return passwordChangedTime > jwtIssuedTimestamp;
+};
+
+export const getUserModel = (connection: Connection) => {
+  // Prevent recompiling model if it already exists on this connection
+  if (connection.models.User) {
+    return connection.models.User as TUserModel;
+  }
+  return connection.model<TUser, TUserModel>('User', userSchema);
+};

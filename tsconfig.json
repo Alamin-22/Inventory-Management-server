@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    /* Base Configuration */
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2020", "DOM"],
+
+    /* Strictness & Checks */
+    "strict": true, // Enables all strict type checking options
+    "noImplicitAny": true, // Error on 'any' types
+    "strictNullChecks": true, // Stops you from accessing properties on null
+    "noUnusedLocals": true, //  Error if you define a variable but don't use it
+    "noUnusedParameters": true, //  Error if you define a function param but don't use it
+
+    /* Module & Path Handling */
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["src/app/*"], // explicit 'src/' prefix is safer
+      "@config/*": ["src/config/*"],
+      "@shared/*": ["src/shared/*"],
+      "@utils/*": ["src/utils/*"],
+      "*": ["node_modules/*"] // Fallback to node_modules
+    },
+
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+
+    /* Output */
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "sourceMap": true,
+    "skipLibCheck": true // Speeds up compilation by skipping checks inside node_modules
+  },
+  "include": ["src/**/*"], // simplified include
+  "exclude": ["node_modules", "dist"]
+}

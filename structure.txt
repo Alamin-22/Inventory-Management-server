@@ -1,0 +1,162 @@
+├── .gitignore
+├── .prettierrc
+├── env
+│   └── .env
+├── eslint.config.mjs
+├── flowChart.txt
+├── generate-tree.js
+├── package-lock.json
+├── package.json
+├── readme.md
+├── src
+│   ├── app
+│   │   ├── app.ts
+│   │   ├── classes
+│   │   │   ├── AppError.ts
+│   │   │   ├── QueryBuilder.ts
+│   │   │   └── QueryBuilderOne.ts
+│   │   ├── Email_Templates
+│   │   │   ├── Authentication-Related
+│   │   │   │   ├── forgotPassword.template.ts
+│   │   │   │   └── verificationEmail.template.ts
+│   │   │   ├── Contact-Related
+│   │   │   │   └── ContactUsNotificationTemplate.ts
+│   │   │   ├── email.utils.ts
+│   │   │   ├── Order-Related
+│   │   │   │   ├── AdminNewOrderNotification.ts
+│   │   │   │   ├── oder.email.interface.ts
+│   │   │   │   ├── OrderConfirmedEmail.ts
+│   │   │   │   ├── OrderExpiredEmail.ts
+│   │   │   │   ├── OrderStatusUpdateEmail.ts
+│   │   │   │   └── OrderSubmittedConfirmation.ts
+│   │   │   └── Product-Related
+│   │   │       ├── BackInStockEmail.ts
+│   │   │       ├── LowStockNotification.ts
+│   │   │       ├── OutOfStockNotification.ts
+│   │   │       ├── product.email.interface.ts
+│   │   │       └── ReviewNotificationTemplate.ts
+│   │   ├── interfaces
+│   │   │   ├── error.ts
+│   │   │   └── index.D.ts
+│   │   ├── main-router
+│   │   │   └── index.ts
+│   │   ├── middlewares
+│   │   │   ├── AuditLogger.ts
+│   │   │   ├── AuthValidationMiddleWare.ts
+│   │   │   ├── fileCleanupOnError.ts
+│   │   │   ├── fileCleanupOnFinish.ts
+│   │   │   ├── globalErrorHandler.ts
+│   │   │   ├── index.ts
+│   │   │   ├── initialMiddlewares.ts
+│   │   │   ├── OptionalAuthMiddleWare.ts
+│   │   │   └── ValidateRequestMiddleWare.ts
+│   │   └── modules
+│   │       ├── admin
+│   │       │   ├── admin.constants.ts
+│   │       │   ├── admin.controller.ts
+│   │       │   ├── admin.interface.ts
+│   │       │   ├── admin.model.ts
+│   │       │   ├── admin.route.ts
+│   │       │   ├── admin.service.ts
+│   │       │   └── admin.validation.ts
+│   │       ├── AuditLog
+│   │       │   ├── AuditLog.controller.ts
+│   │       │   ├── AuditLog.interface.ts
+│   │       │   ├── AuditLog.model.ts
+│   │       │   ├── AuditLog.route.ts
+│   │       │   └── AuditLog.service.ts
+│   │       ├── auth
+│   │       │   ├── auth.controller.ts
+│   │       │   ├── auth.interface.ts
+│   │       │   ├── auth.route.ts
+│   │       │   ├── auth.service.ts
+│   │       │   ├── auth.utils.ts
+│   │       │   └── auth.validation.ts
+│   │       ├── Brand
+│   │       │   ├── Brand.controller.ts
+│   │       │   ├── Brand.interface.ts
+│   │       │   ├── Brand.model.ts
+│   │       │   ├── Brand.route.ts
+│   │       │   ├── Brand.service.ts
+│   │       │   └── Brand.validation.ts
+│   │       ├── Category
+│   │       │   ├── Category.controller.ts
+│   │       │   ├── Category.interface.ts
+│   │       │   ├── Category.model.ts
+│   │       │   ├── Category.route.ts
+│   │       │   ├── Category.service.ts
+│   │       │   └── Category.validation.ts
+│   │       ├── Common
+│   │       │   ├── Common.controller.ts
+│   │       │   ├── Common.interface.ts
+│   │       │   ├── Common.model.ts
+│   │       │   ├── Common.route.ts
+│   │       │   ├── Common.service.ts
+│   │       │   └── Common.validation.ts
+│   │       ├── customer
+│   │       │   ├── customer.controller.ts
+│   │       │   ├── customer.interface.ts
+│   │       │   ├── customer.model.ts
+│   │       │   ├── customer.router.ts
+│   │       │   ├── customer.service.ts
+│   │       │   └── customer.validation.ts
+│   │       ├── initial
+│   │       │   └── seedSuperAdmin.ts
+│   │       ├── Order
+│   │       │   ├── Order.constant.ts
+│   │       │   ├── Order.controller.ts
+│   │       │   ├── Order.email.ts
+│   │       │   ├── Order.group-buy.service.ts
+│   │       │   ├── Order.interface.ts
+│   │       │   ├── Order.model.ts
+│   │       │   ├── Order.route.ts
+│   │       │   ├── Order.service.ts
+│   │       │   ├── Order.utils.ts
+│   │       │   └── Order.Validation.ts
+│   │       ├── products
+│   │       │   ├── product.constants.ts
+│   │       │   ├── product.controller.ts
+│   │       │   ├── product.interface.ts
+│   │       │   ├── product.model.ts
+│   │       │   ├── product.parseDataJsonWithFiles.ts
+│   │       │   ├── product.router.ts
+│   │       │   ├── product.service.ts
+│   │       │   ├── product.utils.ts
+│   │       │   └── product.validation.ts
+│   │       ├── SharedCounter
+│   │       │   ├── SharedCounter.interface.ts
+│   │       │   ├── SharedCounter.model.ts
+│   │       │   └── SharedCounter.utils.ts
+│   │       └── user
+│   │           ├── counter.model.ts
+│   │           ├── user.constants.ts
+│   │           ├── user.controller.ts
+│   │           ├── user.interface.ts
+│   │           ├── user.model.ts
+│   │           ├── user.router.ts
+│   │           ├── user.service.ts
+│   │           ├── user.utils.ts
+│   │           └── user.validation.ts
+│   ├── config
+│   │   ├── db.ts
+│   │   └── env.ts
+│   ├── server.ts
+│   ├── shared
+│   │   └── type
+│   │       └── jwtPayload.ts
+│   └── utils
+│       ├── catchAsync.ts
+│       ├── convertToUSD.ts
+│       ├── generateAvatar.ts
+│       ├── generateJWT.ts
+│       ├── index.ts
+│       ├── sanitize.ts
+│       ├── sendEmail.ts
+│       ├── sendMediaToCloudinary.ts
+│       ├── sendResponse.ts
+│       └── slugGenerator.ts
+├── structure.txt
+├── tsconfig.json
+└── uploads
+    ├── images-1771217845237-356618782
+    └── variants[2][image]-1755530230142-542213617
