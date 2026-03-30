@@ -2,13 +2,9 @@ import { z } from 'zod';
 
 const createCategoryZodSchema = z.object({
   body: z.object({
-    name: z.string().min(1, 'Name is required'),
+    name: z.string().min(1, 'Category name is required'),
     description: z.string().optional(),
-    seoTitle: z.string().optional(),
-    seoDescription: z.string().optional(),
     parentCategory: z.string().optional(),
-    categoryImage: z.string().optional(),
-    isFeatured: z.boolean().optional(),
   }),
 });
 
@@ -16,11 +12,7 @@ const updateCategoryZodSchema = z.object({
   body: z.object({
     name: z.string().optional(),
     description: z.string().optional(),
-    seoTitle: z.string().optional(),
-    seoDescription: z.string().optional(),
     parentCategory: z.string().optional(),
-    categoryImage: z.string().optional(),
-    isFeatured: z.boolean().optional(),
   }),
 });
 
@@ -33,7 +25,7 @@ const reorderCategoryZodSchema = z.object({
   ),
 });
 
-export const categoryValidationSchemas = {
+export const CategoryValidation = {
   createCategoryZodSchema,
   updateCategoryZodSchema,
   reorderCategoryZodSchema,

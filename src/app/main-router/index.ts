@@ -3,11 +3,8 @@ import { AuthRoutes } from '@app/modules/auth/auth.route';
 import { UserRoutes } from '@app/modules/user/user.router';
 import { CustomerRoutes } from '@app/modules/customer/customer.router';
 import { AdminRoutes } from '@app/modules/admin/admin.route';
-import { CategoryRoutes } from '@app/modules/Category/Category.route';
-import { ProductRoutes } from '@app/modules/products/product.router';
-import { OrderRoutes } from '@app/modules/Order/Order.route';
 import { auditLogger } from '@app/middlewares/AuditLogger';
-import { AuditLogRoutes } from '@app/modules/AuditLog/AuditLog.route';
+import { CategoryRoutes } from '@app/modules/Category/Category.route';
 
 const router = Router();
 
@@ -20,9 +17,9 @@ const moduleRoutes = [
 
   // Inventory Management Core
   { path: '/categories', route: CategoryRoutes },
-  { path: '/products', route: ProductRoutes },
-  { path: '/orders', route: OrderRoutes },
-  { path: '/audit-logs', route: AuditLogRoutes },
+  // { path: '/products', route: ProductRoutes },
+  // { path: '/orders', route: OrderRoutes },
+  // { path: '/audit-logs', route: AuditLogRoutes },
 ];
 
 // 1. REGISTER AUTH FIRST (To keep Login/Logout out of the Audit Logs)

@@ -1,60 +1,50 @@
-import express, { NextFunction, Request, Response } from 'express';
+import express from 'express';
 import { CategoryControllers } from './Category.controller';
-import { categoryValidationSchemas } from './Category.validation';
-import { upload } from '@utils/sendMediaToCloudinary';
+import { CategoryValidation } from './Category.validation';
 import ValidateRequestMiddleWare from '@app/middlewares/ValidateRequestMiddleWare';
 import AuthValidationMiddleWare from '@app/middlewares/AuthValidationMiddleWare';
 import { USER_ROLE } from '@app/modules/user/user.constants';
-import { fileCleanupOnFinish } from '@app/middlewares/fileCleanupOnFinish';
 
 const router = express.Router();
 
-// api/v1/category/create => to create category
+// Staff Roles mapping
+const STAFF = [USER_ROLE.super_admin, USER_ROLE.admin, USER_ROLE.manager];
+
+// Create
 router.post(
-  '/create',
-  upload.single('file'),
-  fileCleanupOnFinish,
-  // function to handle image upload
-  (req: Request, _res: Response, next: NextFunction) => {
-    req.body = JSON.parse(req.body.data);
-    next();
-  },
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ValidateRequestMiddleWare(categoryValidationSchemas.createCategoryZodSchema),
+  '/',
+  AuthValidationMiddleWare(...STAFF),
+  ValidateRequestMiddleWare(CategoryValidation.createCategoryZodSchema),
   CategoryControllers.createCategory,
 );
 
+// Read All
+router.get('/', AuthValidationMiddleWare(...STAFF), CategoryControllers.getAllCategories);
+
+// Read Single
+router.get('/:id', AuthValidationMiddleWare(...STAFF), CategoryControllers.getSingleCategory);
+
+// Reorder (Must be placed before /:id to prevent route clashing)
 router.patch(
   '/reorder',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ValidateRequestMiddleWare(categoryValidationSchemas.reorderCategoryZodSchema),
+  AuthValidationMiddleWare(...STAFF),
+  ValidateRequestMiddleWare(CategoryValidation.reorderCategoryZodSchema),
   CategoryControllers.reOrderCategories,
 );
 
-// api/vi/categories to get all categories
-router.get('/', CategoryControllers.getAllCategories);
-
-// to delete category
-router.delete(
-  '/delete/:id',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  CategoryControllers.deleteCategory,
-);
-
-router.get('/:id', CategoryControllers.getSingleCategory);
-
-// update
+// Update
 router.patch(
   '/:id',
-  upload.single('file'),
-  fileCleanupOnFinish,
-  (req: Request, _res: Response, next: NextFunction) => {
-    req.body = JSON.parse(req.body.data);
-    next();
-  },
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ValidateRequestMiddleWare(categoryValidationSchemas.updateCategoryZodSchema),
+  AuthValidationMiddleWare(...STAFF),
+  ValidateRequestMiddleWare(CategoryValidation.updateCategoryZodSchema),
   CategoryControllers.updateCategory,
+);
+
+// Delete
+router.delete(
+  '/:id',
+  AuthValidationMiddleWare(USER_ROLE.super_admin, USER_ROLE.admin), // Only admins can delete
+  CategoryControllers.deleteCategory,
 );
 
 export const CategoryRoutes = router;
