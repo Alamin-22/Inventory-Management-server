@@ -7,13 +7,13 @@ import { QueryBuilder } from '@app/classes/QueryBuilder';
 import { slugGenerator } from '@utils/slugGenerator';
 
 const createCategoryIntoDB = async (payload: Partial<ICategory>) => {
-  const isExist = await Category.isCategoryExists(payload.name!);
-  if (isExist) throw new AppError('Category already exists', httpStatus.CONFLICT);
-
   const slug = slugGenerator(payload.name!);
   payload.slug = slug;
 
-  // Auto-assign the next order number
+  const isExist = await Category.findOne({ slug });
+  if (isExist) throw new AppError('Category already exists', httpStatus.CONFLICT);
+
+  // 3. Auto-assign the next order number
   const lastCategory = await Category.findOne({
     parentCategory: payload.parentCategory || null,
   }).sort({ order: -1 });
@@ -115,12 +115,15 @@ const getSingleCategoryFromDB = async (identifier: string) => {
 
 const updateCategoryIntoDB = async (id: string, payload: Partial<ICategory>) => {
   if (payload.name) {
+    const generatedSlug = slugGenerator(payload.name);
+    payload.slug = generatedSlug;
+
     const isExist = await Category.findOne({
-      name: { $regex: new RegExp(`^${payload.name}$`, 'i') },
+      slug: generatedSlug,
       _id: { $ne: id },
     });
+
     if (isExist) throw new AppError('Category name already in use', httpStatus.CONFLICT);
-    payload.slug = slugGenerator(payload.name);
   }
 
   const updatedCategory = await Category.findByIdAndUpdate(id, payload, { new: true, runValidators: true });
@@ -134,10 +137,11 @@ const deleteCategoryFromDB = async (id: string) => {
   try {
     session.startTransaction();
 
+    // Perform hard delete of the parent
     const deletedCategory = await Category.findByIdAndDelete(id).session(session);
     if (!deletedCategory) throw new AppError('Category not found', httpStatus.NOT_FOUND);
 
-    // Cascading delete: Remove all children
+    // Cascading hard delete: Remove all children
     await Category.deleteMany({ parentCategory: id }).session(session);
 
     await session.commitTransaction();
@@ -153,12 +157,13 @@ const deleteCategoryFromDB = async (id: string) => {
 const reorderCategoriesInDB = async (payload: { id: string; order: number }[]) => {
   const bulkOps = payload.map((item) => ({
     updateOne: {
-      filter: { _id: item.id },
+      filter: { _id: new mongoose.Types.ObjectId(item.id) },
       update: { $set: { order: item.order } },
     },
   }));
 
-  await Category.bulkWrite(bulkOps);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await Category.bulkWrite(bulkOps as any);
   return null;
 };
 

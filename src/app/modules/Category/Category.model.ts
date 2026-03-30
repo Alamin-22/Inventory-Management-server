@@ -26,8 +26,4 @@ categorySchema.pre(/^find/, function (this: Query<ICategory, Document>, next) {
   next();
 });
 
-categorySchema.statics.isCategoryExists = async function (name: string) {
-  return await this.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
-};
-
 export const Category = mongoose.model<ICategory, TCategoryModel>('Category', categorySchema);
