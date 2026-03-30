@@ -1,8 +1,7 @@
-import { Connection } from 'mongoose';
 import { USER_ROLE } from './user.constants';
 import { getCounterModel } from './counter.model';
 
-export const generateUserId = async (role: string, connection: Connection) => {
+export const generateUserId = async (role: string) => {
   let prefix = '';
   let counterId = '';
 
@@ -24,7 +23,7 @@ export const generateUserId = async (role: string, connection: Connection) => {
       counterId = 'user_id';
   }
 
-  const CounterModel = getCounterModel(connection);
+  const CounterModel = getCounterModel();
 
   const result = await CounterModel.findByIdAndUpdate(
     { _id: counterId },

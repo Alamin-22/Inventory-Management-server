@@ -1,5 +1,6 @@
 import mongoose, { Query, Schema, Document } from 'mongoose';
 import { ICustomer, TCustomerModel } from './customer.interface';
+import { CUSTOMER_TYPES } from './customer.constant';
 
 const addressSchema = new Schema(
   {
@@ -19,7 +20,7 @@ const customerSchema = new Schema<ICustomer, TCustomerModel>(
     contactNo: { type: String, required: true, unique: true },
     email: { type: String, sparse: true },
 
-    customerType: { type: String, enum: ['retail', 'wholesale', 'corporate'], default: 'retail' },
+    customerType: { type: String, enum: CUSTOMER_TYPES, default: 'retail' },
     companyName: { type: String },
     taxId: { type: String },
 

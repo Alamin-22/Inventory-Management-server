@@ -1,4 +1,7 @@
 import { Model, Types } from 'mongoose';
+import { CUSTOMER_TYPES } from './customer.constant';
+
+export type TCustomerType = (typeof CUSTOMER_TYPES)[number];
 
 export interface ICustomerAddress {
   street?: string;
@@ -13,10 +16,10 @@ export interface ICustomer {
   id: string; // e.g., CUST-00001
 
   name: string;
-  contactNo: string; // Primary key for retail
+  contactNo: string;
   email?: string; // Optional for walk-ins
 
-  customerType: 'retail' | 'wholesale' | 'corporate';
+  customerType: TCustomerType;
   companyName?: string;
   taxId?: string;
 

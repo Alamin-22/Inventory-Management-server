@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CUSTOMER_TYPES } from './customer.constant';
 
 const addressSchema = z.object({
   street: z.string().optional(),
@@ -13,7 +14,7 @@ const createCustomerZodSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     contactNo: z.string().min(1, 'Contact number is required'),
     email: z.string().email().optional(),
-    customerType: z.enum(['retail', 'wholesale', 'corporate']).optional(),
+    customerType: z.enum(CUSTOMER_TYPES as unknown as [string, ...string[]]).optional(),
     companyName: z.string().optional(),
     taxId: z.string().optional(),
     billingAddress: addressSchema.optional(),
@@ -26,7 +27,7 @@ const updateCustomerZodSchema = z.object({
     name: z.string().optional(),
     contactNo: z.string().optional(),
     email: z.string().email().optional(),
-    customerType: z.enum(['retail', 'wholesale', 'corporate']).optional(),
+    customerType: z.enum(CUSTOMER_TYPES as unknown as [string, ...string[]]).optional(),
     companyName: z.string().optional(),
     taxId: z.string().optional(),
     billingAddress: addressSchema.optional(),
