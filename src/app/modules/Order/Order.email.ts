@@ -4,7 +4,6 @@ import { config } from '@config/env';
 import { TProductModel } from '../products/product.model';
 import { IProduct } from '../products/product.interface';
 import { StockNotificationEmailParams } from '@app/Email_Templates/Product-Related/product.email.interface';
-
 import OutOfStockNotification from '@app/Email_Templates/Product-Related/OutOfStockNotification';
 import LowStockNotification from '@app/Email_Templates/Product-Related/LowStockNotification';
 import OrderConfirmedEmail from '@app/Email_Templates/Order-Related/OrderConfirmedEmail';

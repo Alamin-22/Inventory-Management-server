@@ -1,12 +1,8 @@
 import { ClientSession } from 'mongoose';
-import { IOrderItem } from './order.interface';
+import { IOrderItem } from './Order.interface';
 import { TProductModel } from '../products/product.model';
-import { OrderRelatedEmails } from './order.email';
+import { OrderRelatedEmails } from './Order.email';
 
-/**
- * Generates a clean, human-readable Order ID for the IMS Dashboard.
- * Example: ORD-260401-A4B9Z
- */
 export const generateOrderId = (): string => {
   const now = new Date();
   const year = now.getFullYear().toString().slice(-2);
@@ -24,15 +20,16 @@ export const generateOrderId = (): string => {
 };
 
 /**
- * Checks stock levels AFTER deduction.
- * If stock <= minStockThreshold, it triggers the Admin Alert / Restock Queue logic.
+ * Decrements stock atomically and checks if the item has hit the Restock Queue threshold.
+ * If stock <= minStockThreshold, it triggers the Admin Alert.
  */
-export const _checkLowStockAndNotify = async (
+export const _decrementStockAndNotify = async (
   items: IOrderItem[],
   ProductModel: TProductModel,
   session?: ClientSession,
 ): Promise<void> => {
   for (const item of items) {
+    // Fetch current product/variant state
     const productDoc = await ProductModel.findOne(
       { _id: item.product, 'variants._id': item.variantId },
       { title: 1, 'variants.$': 1 },
@@ -41,25 +38,42 @@ export const _checkLowStockAndNotify = async (
     if (!productDoc || !productDoc.variants.length) continue;
 
     const variant = productDoc.variants[0];
+
+    //  Decrement Stock Atomically
+    await ProductModel.updateOne(
+      { _id: item.product, 'variants._id': item.variantId },
+      { $inc: { 'variants.$.inventory.stock': -item.quantity } },
+      { session },
+    );
+
+    // Calculate new stock for Notification Logic
     const currentStock = variant.inventory?.stock ?? 0;
+    const newStock = currentStock - item.quantity;
     const threshold = variant.inventory?.minStockThreshold ?? 10;
 
-    // TASK DOC RULE #5: Restock Queue (Low Stock Management)
-    if (currentStock <= threshold) {
-      // 1. Send an email to the Admin (Fire and forget, don't await)
-      OrderRelatedEmails.sendAdminLowStockAlert(
-        variant.name || productDoc.title,
-        item.sku,
-        currentStock,
-        threshold,
-      ).catch((err) => console.error('Failed to send low stock alert:', err));
-
-      // 2. FUTURE IMPLEMENTATION: Add to Restock Queue Database Table
-      // await RestockQueueModel.updateOne(
-      //   { sku: item.sku },
-      //   { $setOnInsert: { product: productDoc._id, priority: currentStock === 0 ? 'High' : 'Medium' } },
-      //   { upsert: true, session }
-      // );
+    // Restock Queue Notification
+    // We notify if the stock JUST dropped below the threshold, or hit zero.
+    if (newStock <= threshold) {
+      OrderRelatedEmails.sendAdminLowStockAlert(variant.name || productDoc.title, item.sku, newStock, threshold).catch(
+        (err) => console.error('Failed to send low stock alert:', err),
+      );
     }
+  }
+};
+
+/**
+ * Reverts stock. Used when an Admin Cancels an order.
+ */
+export const _restockItems = async (
+  items: IOrderItem[],
+  ProductModel: TProductModel,
+  session?: ClientSession,
+): Promise<void> => {
+  for (const item of items) {
+    await ProductModel.updateOne(
+      { _id: item.product, 'variants._id': item.variantId },
+      { $inc: { 'variants.$.inventory.stock': item.quantity } },
+      { session },
+    );
   }
 };

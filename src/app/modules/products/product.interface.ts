@@ -19,6 +19,7 @@ export interface I_inventory {
 }
 
 export interface IProductVariant {
+  _id?: Types.ObjectId;
   name: string;
   sku: string;
   selectedOptions: Record<string, string>;
