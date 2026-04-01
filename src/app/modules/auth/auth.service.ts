@@ -121,7 +121,7 @@ const forgetPassword = async (email: string) => {
     '10m',
   );
 
-  const resetUILink = `${config.clientUrl}/reset-password?email=${user.email}&token=${resetToken}`;
+  const resetUILink = `${config.client.url}/reset-password?email=${user.email}&token=${resetToken}`;
 
   try {
     const subject = `Reset Your Password - Inventory System`;

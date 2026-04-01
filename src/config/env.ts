@@ -10,9 +10,20 @@ export const config = {
   //  Database Config
   mongoUri: process.env.MONGO_URI as string,
 
-  // Client Config
-  clientUrl: process.env.CLIENT_URL as string,
-  domain: process.env.DOMAIN as string,
+  // Admin Config (For Restock Queues & Internal Alerts)
+  admin: {
+    notificationEmail: process.env.ADMIN_NOTIFICATION_EMAIL as string,
+  },
+
+  // Client config
+  client: {
+    companyName: process.env.COMPANY_NAME as string,
+    logoUrl: process.env.LOGO_URL as string,
+    supportEmail: process.env.SUPPORT_EMAIL as string,
+    supportPhone: process.env.SUPPORT_PHONE as string,
+    url: process.env.CLIENT_URL as string,
+    domain: process.env.DOMAIN as string,
+  },
 
   // SMTP Config
   smtpCredential: {

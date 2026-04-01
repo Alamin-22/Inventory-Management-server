@@ -14,7 +14,7 @@ export const server = http.createServer(app);
 initialMiddlewares(app);
 
 // Initialize Socket Server
-// export const io = initSocketServer(server, config.clientUrl);
+// export const io = initSocketServer(server, config.client.url);
 
 // Root route
 app.get('/', (_req: Request, res: Response) => {
