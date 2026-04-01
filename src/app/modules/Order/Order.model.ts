@@ -48,7 +48,9 @@ const OrderSchema = new Schema<IOrder>(
     orderId: { type: String, required: true, unique: true },
 
     customerName: { type: String, required: true, trim: true },
+    // later on the next update I will update this with automatic suggsetion form our existing db, so that for the next order same customer can be easily selected
     customerPhone: { type: String, trim: true },
+    customerEmail: { type: String, trim: true },
     shippingAddress: { type: String, trim: true },
 
     items: {

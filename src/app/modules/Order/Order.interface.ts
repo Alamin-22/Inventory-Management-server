@@ -31,6 +31,7 @@ export interface IOrder extends Document {
 
   customerName: string;
   customerPhone?: string;
+  customerEmail?: string;
   shippingAddress?: string;
 
   items: IOrderItem[];

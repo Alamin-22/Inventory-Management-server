@@ -16,7 +16,7 @@ const loginUser: RequestHandler = catchAsync(async (req, res) => {
     secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
-    domain: isProduction ? config.domain : undefined,
+    domain: isProduction ? config.client.domain : undefined,
   });
 
   sendResponse(res, {
@@ -44,7 +44,7 @@ const logout: RequestHandler = catchAsync(async (_req, res) => {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax',
-    domain: isProduction ? config.domain : undefined,
+    domain: isProduction ? config.client.domain : undefined,
   });
 
   sendResponse(res, {
