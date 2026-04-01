@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from 'http-status';
-import mongoose, { Types } from 'mongoose';
+import { startSession, Types } from 'mongoose';
 import { QueryBuilder } from '@app/classes/QueryBuilder';
 import { AppError } from '@app/classes/AppError';
 import { IProduct, IProductImage } from './product.interface';
@@ -392,9 +392,8 @@ const deleteProductsPermanentlyFromDB = async (productIds: string[]) => {
   return result;
 };
 
-// complex function, this is designed for partial update , becareful before touching it
 const updateProductIntoDB = async (id: string, payload: Partial<IProduct>) => {
-  const session = await connection.startSession();
+  const session = await startSession();
 
   try {
     await session.withTransaction(async () => {
@@ -439,7 +438,7 @@ const updateProductIntoDB = async (id: string, payload: Partial<IProduct>) => {
 
       const urlMap =
         uniqueFilesToUpload.size > 0
-          ? await uploadUniqueFiles(storePreference, nextSlug, uniqueFilesToUpload, 'products')
+          ? await uploadUniqueFiles(nextSlug, uniqueFilesToUpload, 'products')
           : new Map<string, IProductImage>();
 
       // Gallery handling (robust PATCH semantics)
@@ -527,11 +526,6 @@ const updateProductIntoDB = async (id: string, payload: Partial<IProduct>) => {
           'priceBDT',
           'oldPriceBDT',
           'discountPercentage',
-          'fulfillmentType',
-          'launchDate',
-          'deliveryEstimate',
-          'sourcePrice',
-          'sourceCurrency',
           'inventory',
           'image',
         ]);
@@ -539,35 +533,6 @@ const updateProductIntoDB = async (id: string, payload: Partial<IProduct>) => {
         const bulkOps = existingUpdates
           .map((v: any) => {
             processVariantImage(v);
-
-            // Match old variant by _id for notifications
-            const oldVariant = (current.variants ?? []).find((cv: any) => cv._id?.toString() === v._id?.toString());
-
-            if (oldVariant) {
-              const oldFT = oldVariant.fulfillmentType;
-              const newFT = v.fulfillmentType ?? oldFT;
-
-              const stockExplicitlyProvided =
-                hasOwn(v, 'inventory') &&
-                v.inventory &&
-                typeof v.inventory === 'object' &&
-                hasOwn(v.inventory, 'stock');
-
-              if (newFT === PRODUCT_FULFILLMENT_TYPE.READY_TO_SHIP && stockExplicitlyProvided) {
-                const newStock = v.inventory?.stock;
-                const oldStock = oldVariant.inventory?.stock || 0;
-
-                if (typeof newStock === 'number') {
-                  const wasOut = oldStock <= 0;
-                  const isNowIn = newStock > 0;
-                  if (wasOut && isNowIn) {
-                    notificationService
-                      .triggerRestockNotifications(v.sku)
-                      .catch((e) => console.error('Restock Notification Error:', e));
-                  }
-                }
-              }
-            }
 
             const updateFields: Record<string, any> = {};
             for (const [key, val] of Object.entries(v)) {
@@ -635,7 +600,6 @@ const updateProductIntoDB = async (id: string, payload: Partial<IProduct>) => {
       }
 
       const isUnpublishingNow = (payload as any).isPublished === false && current.isPublished === true;
-
       if (isUnpublishingNow) {
         updateQuery.$set.isPublished = false;
         updateQuery.$set.status = PRODUCT_STATUS.Draft;
@@ -720,16 +684,11 @@ const toggleProductStatus = async (id: string, isPublished: boolean) => {
     validationData.isPublished = true;
     validationData.status = PRODUCT_STATUS.Active;
 
+    // Flatten populated ObjectIds down to string IDs for Zod validation
     validationData.category =
       typeof validationData.category === 'object' ? validationData.category?._id : validationData.category;
-    validationData.verifiedBrandId =
-      typeof validationData.verifiedBrandId === 'object'
-        ? validationData.verifiedBrandId?._id
-        : validationData.verifiedBrandId;
-    validationData.badges = (validationData.badges as any)?.map((b: any) => (typeof b === 'object' ? b._id : b));
-    validationData.frequentlyBoughtTogether = (validationData.frequentlyBoughtTogether as any)?.map((b: any) =>
-      typeof b === 'object' ? b._id : b,
-    );
+
+    validationData.brand = typeof validationData.brand === 'object' ? validationData.brand?._id : validationData.brand;
 
     // Validate!
     productValidationSchemas.publishableProductZodSchema.shape.body.parse(validationData);
@@ -755,12 +714,7 @@ export const ProductServices = {
   updateProductIntoDB,
   softDeleteProductFromDB,
   restoreArchivedProductIntoDB,
-  getPendingProductsFromDB,
-  approveProductIntoInventory,
   toggleProductStatus,
-  getRelatedProductsFromDB,
-
   getArchivedProductsFromDB,
   deleteProductsPermanentlyFromDB,
-  getRecentlyViewedProductsFromDB,
 };

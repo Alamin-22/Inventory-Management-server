@@ -1,77 +1,57 @@
+import express from 'express';
 import AuthValidationMiddleWare from '@app/middlewares/AuthValidationMiddleWare';
+import CheckAuthPermissionMiddleware from '@app/middlewares/CheckAuthPermissionMiddleware';
 import ValidateRequestMiddleWare from '@app/middlewares/ValidateRequestMiddleWare';
 import { upload } from '@utils/sendMediaToCloudinary';
-import express from 'express';
 import { ProductControllers } from './product.controller';
 import { USER_ROLE } from '../user/user.constants';
+import { AdminPermissions } from '@app/modules/admin/admin.constant';
 import { productValidationSchemas } from './product.validation';
 import { parseDataJsonWithFiles } from './product.parseDataJsonWithFiles';
 import { fileCleanupOnFinish } from '@app/middlewares/fileCleanupOnFinish';
 
 const router = express.Router();
 
-// -------------------- Public routes --------------------
-router.get('/get_all', ProductControllers.getAllProducts);
-
-router.post(
-  '/recently_viewed',
-  ValidateRequestMiddleWare(productValidationSchemas.recentlyViewedZodSchema),
-  ProductControllers.getRecentlyViewedProducts,
+// -------------------- POS / Staff Routes --------------------
+// Cashiers and stock staff need to view active products to process orders
+router.get(
+  '/get_all',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_STOCK),
+  ProductControllers.getAllProducts,
 );
 
-// -------------------- Admin routes --------------------
+router.get(
+  '/:identifier',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
+  ProductControllers.getSingleProduct,
+);
+
+// -------------------- Admin / Manager Routes --------------------
+router.get(
+  '/dashboard/get_all',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
+  ProductControllers.getAllProductsForDashboard,
+);
+
+router.get(
+  '/dashboard/archived',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
+  ProductControllers.getArchivedProductsForDashboard,
+);
+
 router.post(
   '/create',
   upload.any(),
   fileCleanupOnFinish,
   parseDataJsonWithFiles,
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
   ValidateRequestMiddleWare(productValidationSchemas.createProductZodSchema),
   ProductControllers.createProduct,
-);
-
-router.get(
-  '/get_all_for_dashboard',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ProductControllers.getAllProductsForDashboard,
-);
-
-router.get(
-  '/pending',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ProductControllers.getPendingProducts,
-);
-
-router.get(
-  '/archived',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ProductControllers.getArchivedProductsForDashboard,
-);
-
-router.delete(
-  '/permanent_delete',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ValidateRequestMiddleWare(productValidationSchemas.permanentDeleteZodSchema),
-  ProductControllers.deleteProductsPermanently,
-);
-
-router.patch(
-  '/restore/:id',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ProductControllers.restoreProduct,
-);
-
-router.delete(
-  '/delete/:id',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ProductControllers.deleteProduct,
-);
-
-router.post(
-  '/approve/:id',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ValidateRequestMiddleWare(productValidationSchemas.approveProductZodSchema),
-  ProductControllers.approveProduct,
 );
 
 router.patch(
@@ -79,18 +59,39 @@ router.patch(
   upload.any(),
   fileCleanupOnFinish,
   parseDataJsonWithFiles,
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
   ValidateRequestMiddleWare(productValidationSchemas.updateProductZodSchema),
   ProductControllers.updateProduct,
 );
 
 router.patch(
   '/:id/status',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
   ProductControllers.toggleStatus,
 );
-router.get('/:identifier/related', ProductControllers.getRelatedProducts);
 
-router.get('/:identifier', ProductControllers.getSingleProduct);
+router.delete(
+  '/delete/:id',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
+  ProductControllers.deleteProduct,
+);
+
+router.patch(
+  '/restore/:id',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
+  ProductControllers.restoreProduct,
+);
+
+router.delete(
+  '/permanent_delete',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin), // Restricted explicitly
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
+  ValidateRequestMiddleWare(productValidationSchemas.permanentDeleteZodSchema),
+  ProductControllers.deleteProductsPermanently,
+);
 
 export const ProductRoutes = router;
