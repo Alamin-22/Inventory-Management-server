@@ -133,8 +133,8 @@ ProductSchema.index(
   { weights: { title: 10, tags: 5, 'variants.sku': 2 } },
 );
 ProductSchema.index({ category: 1, isPublished: 1 });
-ProductSchema.index({ verifiedBrandId: 1 });
-ProductSchema.index({ 'variants.sku': 1 }, { unique: true });
+
+ProductSchema.index({ brand: 1 });
 
 // Soft-delete default filter
 ProductSchema.pre(/^find/, function (next) {
