@@ -1,15 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { sendMediaToCloudinary } from '@utils/sendMediaToCloudinary';
-import { slugify } from '@utils/slugGenerator';
-import { IProductImage, IProductVariant } from './product.interface';
-import { Connection, Types } from 'mongoose';
-import { getCategoryModel } from '../Category/Category.model';
 
-export const buildProductSlug = (title: string) => slugify(title);
+import { IProductImage, IProductVariant } from './product.interface';
+import { Types } from 'mongoose';
+import { Category } from '../Category/Category.model';
+import { slugGenerator } from '@utils/slugGenerator';
+
+export const buildProductSlug = (title: string) => slugGenerator(title);
 
 export const computeDefaults = (variants: IProductVariant[] = [], images: IProductImage[] = []) => {
-  // Safe Fallback: Protect against empty arrays
-  const preferred = variants?.find((v) => v.fulfillmentType === 'READY_TO_SHIP') ?? variants?.[0];
+  // Safe Fallback: Since everything is local stock now, just grab the first variant
+  const preferred = variants?.[0];
 
   // Safe Fallback: Optional chaining prevents server crash if gallery is empty
   const defaultImage = preferred?.image?.url || images?.[0]?.url || undefined;
@@ -46,15 +47,13 @@ export const getImageFromFile = (fileOrObj: any, urlMap: Map<UploadKey, IProduct
 };
 
 export const uploadUniqueFiles = async (
-  brand: string,
   slug: string,
   uniqueFilesToUpload: Map<UploadKey, any>,
   folderSuffix = 'products',
 ) => {
-  const folderPath = `${brand.toUpperCase()}/${folderSuffix}`;
+  const folderPath = `IMS-System/${folderSuffix}`;
 
   const uploadPromises = Array.from(uniqueFilesToUpload.entries()).map(async ([fileKey, file]) => {
-    // Clean media name: Slug + Original Name (no ext) + Timestamp
     const originalNameClean = file.originalname?.split?.('.')?.[0]?.replace(/[^a-zA-Z0-9]/g, '-') ?? 'media';
     const mediaName = `${slug}-${originalNameClean}-${Date.now()}`;
 
@@ -87,7 +86,7 @@ export const isPublicIdReferenced = (prod: any, publicId: string) => {
 
 // ****** for deleting image from the product description***************
 
-//  Extract all data-id="..." from an HTML string
+// Extract all data-id="..." from an HTML string
 export const extractPublicIdsFromHtml = (html: string | undefined | null): string[] => {
   if (!html) return [];
   const ids: string[] = [];
@@ -130,30 +129,26 @@ export const mapIds = (arr: any): string[] => {
 export const sanitizeForValidation = (updatedObj: any) => ({
   ...updatedObj,
   category: toId(updatedObj.category),
-  verifiedBrandId: updatedObj.verifiedBrandId ? toId(updatedObj.verifiedBrandId) : null,
-  badges: mapIds(updatedObj.badges),
-  frequentlyBoughtTogether: mapIds(updatedObj.frequentlyBoughtTogether),
+  brand: updatedObj.brand ? toId(updatedObj.brand) : null,
 });
 
 // --- HELPER FUNCTION ---
-export const getExpandedCategoryIds = async (connection: Connection, categoryQuery: string) => {
+export const getExpandedCategoryIds = async (categoryQuery: string) => {
   if (!categoryQuery) return undefined;
 
   // 1. Handle comma-separated strings
   const categoryIds = categoryQuery.split(',').map((id) => id.trim());
-  const CategoryModel = getCategoryModel(connection);
 
-  // 2. Fetch all direct subcategories
-  const subCategories = await CategoryModel.find({ parentCategory: { $in: categoryIds } })
+  // 2. Fetch all direct subcategories using global model
+  const subCategories = await Category.find({ parentCategory: { $in: categoryIds } })
     .select('_id')
     .lean();
 
-  // 3. CRITICAL FIX: Map them to pure Strings so transformOperators doesn't destroy them!
+  // 3. Map them to pure Strings
   const subCategoryIds = subCategories.map((c) => c._id.toString());
 
   // 4. Combine and deduplicate as plain strings
   const allEligibleIds = [...new Set([...categoryIds, ...subCategoryIds])];
 
-  // 5. Return the exact object structure your QueryBuilder's post-processor expects
   return { in: allEligibleIds };
 };

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CURRENCY, PRODUCT_FULFILLMENT_TYPE, PRODUCT_SOURCE_TYPE, PRODUCT_STATUS } from './product.constants';
+import { PRODUCT_STATUS } from './product.constants';
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId');
 
@@ -22,17 +22,9 @@ const ImageOrFileSchema = z.union([ImageSchema, z.object({ path: z.string() }).p
 
 const InventorySchema = z.object({
   stock: z.number().int().min(0).default(0),
+  minStockThreshold: z.number().int().min(0).default(10),
   preOrderLimit: z.number().int().min(0).default(0),
   preOrdersSold: z.number().int().min(0).default(0).optional(),
-});
-
-const BookingConfigurationSchema = z.object({
-  allowPartialPayment: z.boolean().default(true),
-  bookingFeePercentage: z
-    .number()
-    .min(1, 'Minimum booking fee is 1%')
-    .max(50, 'Maximum booking fee for partial payment is capped at 50%')
-    .default(10),
 });
 
 const ProductOptionZodSchema = z
@@ -86,86 +78,41 @@ const baseVariantObject = z.object({
   oldPriceBDT: z.number().min(0).optional(),
   discountPercentage: z.number().min(0).max(100).optional(),
 
-  fulfillmentType: z.enum([PRODUCT_FULFILLMENT_TYPE.CROSS_BORDER, PRODUCT_FULFILLMENT_TYPE.READY_TO_SHIP]),
-  launchDate: z.coerce.date().optional().nullable(),
-  deliveryEstimate: z.string().min(1).optional(),
-
-  // External/source price
-  sourcePrice: z.number().min(0).optional(),
-  sourceCurrency: z.enum([CURRENCY.USD, CURRENCY.CNY, CURRENCY.BDT]).optional(),
-
-  inventory: InventorySchema.optional(),
+  inventory: InventorySchema.default({ stock: 0, minStockThreshold: 10, preOrderLimit: 0 }),
 
   image: ImageOrFileSchema.optional(),
 });
 
-// ---  VARIANT SCHEMA ---
+// --- VARIANT SCHEMA ---
 const variantSchema = baseVariantObject.superRefine((v, ctx) => {
-  if (v.fulfillmentType === PRODUCT_FULFILLMENT_TYPE.READY_TO_SHIP) {
-    if (!v.inventory || v.inventory.stock === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Stock is required for Ready-to-Ship items',
-        path: ['inventory', 'stock'],
-      });
-    }
-  }
-
-  if (v.fulfillmentType === PRODUCT_FULFILLMENT_TYPE.CROSS_BORDER && !v.deliveryEstimate) {
+  if (typeof v.inventory?.stock !== 'number') {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Delivery estimate is mandatory for Cross-Border items',
-      path: ['deliveryEstimate'],
+      message: 'Stock is required for all variants',
+      path: ['inventory', 'stock'],
     });
   }
 });
 
-const variantPatchSchema = z
-  .object({
-    sku: z.string().min(1),
-    name: z.string().min(1).optional(),
-    selectedOptions: selectedOptionsSchema.optional(),
+const variantPatchSchema = z.object({
+  sku: z.string().min(1),
+  name: z.string().min(1).optional(),
+  selectedOptions: selectedOptionsSchema.optional(),
 
-    priceBDT: z.number().min(0).optional(),
-    oldPriceBDT: z.number().min(0).optional(),
-    discountPercentage: z.number().min(0).max(100).optional(),
+  priceBDT: z.number().min(0).optional(),
+  oldPriceBDT: z.number().min(0).optional(),
+  discountPercentage: z.number().min(0).max(100).optional(),
 
-    fulfillmentType: z.enum([PRODUCT_FULFILLMENT_TYPE.CROSS_BORDER, PRODUCT_FULFILLMENT_TYPE.READY_TO_SHIP]).optional(),
-    launchDate: z.coerce.date().optional().nullable(),
-    deliveryEstimate: z.string().min(1).optional(),
-
-    sourcePrice: z.number().min(0).optional(),
-    sourceCurrency: z.enum([CURRENCY.USD, CURRENCY.CNY, CURRENCY.BDT]).optional(),
-
-    inventory: InventorySchema.partial().optional(),
-    image: ImageOrFileSchema.optional(),
-  })
-  .superRefine((v, ctx) => {
-    if (v.fulfillmentType === PRODUCT_FULFILLMENT_TYPE.READY_TO_SHIP && typeof v.inventory?.stock !== 'number') {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'stock is required for READY_TO_SHIP',
-        path: ['inventory', 'stock'],
-      });
-    }
-    if (v.fulfillmentType === PRODUCT_FULFILLMENT_TYPE.CROSS_BORDER && !v.deliveryEstimate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'deliveryEstimate is required for CROSS_BORDER',
-        path: ['deliveryEstimate'],
-      });
-    }
-  });
+  inventory: InventorySchema.partial().optional(),
+  image: ImageOrFileSchema.optional(),
+});
 
 // Base Product
-
 const baseProductObject = z.object({
   title: z.string().min(1),
   slug: z.string().optional(),
-  category: objectId.optional().nullable(),
-
-  brandForExternal: z.string().optional(),
-  verifiedBrandId: objectId.nullable().optional(),
+  category: objectId, // Required natively now
+  brand: objectId.nullable().optional(), // Replaced verifiedBrandId
 
   description: z.string().optional(),
   videoReviewUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
@@ -176,22 +123,16 @@ const baseProductObject = z.object({
 
   options: z.array(ProductOptionZodSchema).default([]),
 
-  //  combinations
+  // combinations
   variants: z.array(variantSchema).min(1),
 
-  sourceType: z.enum([PRODUCT_SOURCE_TYPE.MANUAL, PRODUCT_SOURCE_TYPE.SCRAPER, PRODUCT_SOURCE_TYPE.EXTERNAL_API]),
-  sourceUrl: z.string().optional(),
-  sourceProductId: z.string().optional(),
-  requiresAdminVerification: z.boolean().optional(),
   adminNotes: z.string().optional(),
-
-  badges: z.array(objectId).optional(),
-  frequentlyBoughtTogether: z.array(objectId).optional(),
   tags: z.array(z.string()).optional(),
 
-  status: z.enum([PRODUCT_STATUS.Draft, PRODUCT_STATUS.Active, PRODUCT_STATUS.Deleted]).optional(),
+  status: z
+    .enum([PRODUCT_STATUS.Draft, PRODUCT_STATUS.Active, PRODUCT_STATUS.Out_Of_Stock, PRODUCT_STATUS.Deleted])
+    .optional(),
   isPublished: z.boolean().optional(),
-  bookingConfiguration: BookingConfigurationSchema.optional(),
   seo: z
     .object({
       seoTitle: z.string().optional(),
@@ -202,7 +143,7 @@ const baseProductObject = z.object({
 });
 
 // Cross-field Shopify validations
-const enforceShopifyVariantIntegrity = (p: z.infer<typeof baseProductObject>, ctx: z.RefinementCtx) => {
+const enforceVariantIntegrity = (p: z.infer<typeof baseProductObject>, ctx: z.RefinementCtx) => {
   const optionNameToValues = new Map<string, Set<string>>();
   for (const opt of p.options ?? []) {
     const name = opt.name?.trim();
@@ -314,35 +255,7 @@ const enforceShopifyVariantIntegrity = (p: z.infer<typeof baseProductObject>, ct
 
 // Create
 const createProductBody = baseProductObject.superRefine((p, ctx) => {
-  // RULE: Manual Products MUST have Category & Brand
-  if (p.sourceType === PRODUCT_SOURCE_TYPE.MANUAL) {
-    if (!p.verifiedBrandId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'verifiedBrandId is required for MANUAL products',
-        path: ['verifiedBrandId'],
-      });
-    }
-    if (!p.category) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'category is required for MANUAL products',
-        path: ['category'],
-      });
-    }
-  }
-
-  // RULE: Scraper/External Products MUST have External Brand Name
-  if (p.sourceType !== PRODUCT_SOURCE_TYPE.MANUAL && !p.brandForExternal) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'brandForExternal is required for external products',
-      path: ['brandForExternal'],
-    });
-  }
-
-  // Shopify integrity
-  enforceShopifyVariantIntegrity(p, ctx);
+  enforceVariantIntegrity(p, ctx);
 });
 
 // Publish
@@ -352,12 +265,10 @@ const publishableProductBody = baseProductObject
     variants: z.array(baseVariantObject.extend({ image: ImageSchema.optional() })).min(1),
   })
   .superRefine((p, ctx) => {
-    // Shopify integrity (publish path should also be strict)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    enforceShopifyVariantIntegrity(p as any, ctx);
+    enforceVariantIntegrity(p as any, ctx);
 
     if (p.isPublished) {
-      // RULE: Published products MUST have a category
       if (!p.category) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -368,14 +279,14 @@ const publishableProductBody = baseProductObject
       if (!p.images || p.images.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Published product must have an image.',
+          message: 'Published product must have at least one image.',
           path: ['images'],
         });
       }
-      if (p.status && p.status !== PRODUCT_STATUS.Active) {
+      if (p.status && p.status !== PRODUCT_STATUS.Active && p.status !== PRODUCT_STATUS.Out_Of_Stock) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Published product status must be Active.',
+          message: 'Published product status must be Active or Out_Of_Stock.',
           path: ['status'],
         });
       }
@@ -385,7 +296,6 @@ const publishableProductBody = baseProductObject
 // Update
 const updateProductBody = baseProductObject.partial().extend({
   variants: z.array(variantPatchSchema).optional(),
-  bookingConfiguration: BookingConfigurationSchema.partial().optional(),
   seo: z
     .object({
       seoTitle: z.string().optional(),
@@ -393,12 +303,6 @@ const updateProductBody = baseProductObject.partial().extend({
       canonicalUrl: z.string().optional(),
     })
     .optional(),
-});
-
-const recentlyViewedZodSchema = z.object({
-  body: z.object({
-    ids: z.array(objectId).min(1).max(15),
-  }),
 });
 
 const permanentDeleteZodSchema = z.object({
@@ -411,16 +315,5 @@ export const productValidationSchemas = {
   createProductZodSchema: z.object({ body: createProductBody }),
   updateProductZodSchema: z.object({ body: updateProductBody }),
   publishableProductZodSchema: z.object({ body: publishableProductBody }),
-
-  recentlyViewedZodSchema,
   permanentDeleteZodSchema,
-
-  approveProductZodSchema: z.object({
-    body: z.object({
-      verifiedBrandId: objectId,
-      title: z.string().min(1).optional(),
-      category: objectId.optional(),
-      isPublished: z.boolean().optional(),
-    }),
-  }),
 };
