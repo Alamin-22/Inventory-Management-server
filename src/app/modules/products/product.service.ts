@@ -19,14 +19,15 @@ import {
 import { PRODUCT_STATUS, productSearchableFields } from './product.constants';
 import { productValidationSchemas } from './product.validation';
 import { deleteFileFromCloudinary } from '@utils/sendMediaToCloudinary';
-import { Product } from './product.model';
+import { ProductModel } from './product.model';
+import { Category } from '../Category/Category.model';
 
 const createProductIntoDB = async (payload: IProduct): Promise<IProduct> => {
   const data: any = { ...payload };
 
   const slug = data.slug || buildProductSlug(data.title);
 
-  const existingProduct = await Product.findOne({ slug }).select('_id').lean();
+  const existingProduct = await ProductModel.findOne({ slug }).select('_id').lean();
   if (existingProduct) {
     throw new AppError(
       `A product with the title "${data.title}" already exists. Please use a unique title.`,
@@ -108,7 +109,7 @@ const createProductIntoDB = async (payload: IProduct): Promise<IProduct> => {
 
   try {
     // 4. Use global Product model
-    const created = await Product.create(data);
+    const created = await ProductModel.create(data);
     return created;
   } catch (error: any) {
     if (error?.code === 11000) {
@@ -130,7 +131,7 @@ const getAllProductsForDashboardFromDB = async (query: Record<string, any>) => {
   const queryObj = { ...query };
 
   if (queryObj.category) {
-    queryObj.category = await getExpandedCategoryIds(connection, queryObj.category);
+    queryObj.category = await getExpandedCategoryIds(queryObj.category);
   }
 
   const productQuery = new QueryBuilder<IProduct>(ProductModel, {
@@ -150,14 +151,14 @@ const getAllProductsForDashboardFromDB = async (query: Record<string, any>) => {
     })
     .populate({
       from: 'brands',
-      localField: 'verifiedBrandId',
+      localField: 'brand',
       foreignField: '_id',
-      as: 'verifiedBrandId',
+      as: 'brand',
       unwind: true,
       pipeline: [{ $project: { name: 1, slug: 1 } }],
     })
     .paginate()
-    .select('title,slug,defaultImage,category,verifiedBrandId,brandForExternal,variants,status,isPublished,sourceType');
+    .select('title,slug,defaultImage,category,brand,variants,status,isPublished');
 
   const result = await productQuery.exec();
   const meta = await productQuery.getQueryMeta();
@@ -170,7 +171,7 @@ const getAllPublishedProductsFromDB = async (query: Record<string, any>) => {
 
   // 1. Handle Category Slug Fast-fail
   if (queryObj.categorySlug) {
-    const categoryDoc = await CategoryModel.findOne({ slug: queryObj.categorySlug }).select('_id').lean();
+    const categoryDoc = await Category.findOne({ slug: queryObj.categorySlug }).select('_id').lean();
 
     // Fast-fail: If slug is invalid, return empty array instantly
     if (!categoryDoc) {
@@ -185,43 +186,19 @@ const getAllPublishedProductsFromDB = async (query: Record<string, any>) => {
   }
 
   if (queryObj.category) {
-    queryObj.category = await getExpandedCategoryIds(connection, queryObj.category);
+    queryObj.category = await getExpandedCategoryIds(queryObj.category);
   }
 
   const productQuery = new QueryBuilder<IProduct>(ProductModel, {
     ...queryObj,
     isPublished: true,
-    status: PRODUCT_STATUS.Active,
+    status: { $in: [PRODUCT_STATUS.Active, PRODUCT_STATUS.Out_Of_Stock] },
   })
     .search(productSearchableFields)
     .filter()
     .sort()
     .paginate()
-    .populate({
-      from: 'badges',
-      localField: 'badges',
-      foreignField: '_id',
-      as: 'badges',
-      pipeline: [{ $match: { isActive: true } }],
-    })
-    //  OPTIMIZATION: Calculate review stats inside the database engine, NOT in memory!
-    .populate({
-      from: 'reviews',
-      localField: '_id',
-      foreignField: 'product',
-      as: 'reviewStats',
-      pipeline: [
-        { $match: { isPublished: true, isDeleted: false } },
-        {
-          $group: {
-            _id: null,
-            avgRating: { $avg: '$rating' },
-            total: { $sum: 1 },
-          },
-        },
-      ],
-    })
-    // SHAPE STAGE 1: Extract default variant & unpack the review stats array
+    // SHAPE STAGE 1: Extract default variant
     .addStage({
       $project: {
         _id: 1,
@@ -229,9 +206,8 @@ const getAllPublishedProductsFromDB = async (query: Record<string, any>) => {
         slug: 1,
         defaultImage: 1,
         defaultPriceBDT: 1,
-        badges: { $ifNull: ['$badges', []] },
-        // Safely grab the first item from the $group output (or null if no reviews)
-        reviewData: { $arrayElemAt: ['$reviewStats', 0] },
+        createdAt: 1,
+        status: 1,
         defaultVariant: {
           $arrayElemAt: [
             {
@@ -246,7 +222,7 @@ const getAllPublishedProductsFromDB = async (query: Record<string, any>) => {
         },
       },
     })
-    // SHAPE STAGE 2: Format exactly to your Frontend's expectation
+    // SHAPE STAGE 2: Format exactly to a lean inventory list
     .addStage({
       $project: {
         _id: 1,
@@ -256,12 +232,8 @@ const getAllPublishedProductsFromDB = async (query: Record<string, any>) => {
         price: '$defaultPriceBDT',
         oldPrice: '$defaultVariant.oldPriceBDT',
         discountPercentage: '$defaultVariant.discountPercentage',
-        type: { $literal: 'standard' },
-        badges: 1,
         createdAt: 1,
-        // Extract calculated stats directly, preserving exact data shape
-        averageRating: { $round: [{ $ifNull: ['$reviewData.avgRating', 0] }, 1] },
-        totalReviews: { $ifNull: ['$reviewData.total', 0] },
+        status: 1,
       },
     });
 
@@ -271,159 +243,21 @@ const getAllPublishedProductsFromDB = async (query: Record<string, any>) => {
   return { meta, result };
 };
 
-// this is for the relatedProducts endpoint which is used internal products tags and category and it uses a custom calculation to score and sort the products so we are not using the generic query builder features except pagination and sorting
-
-const getRelatedProductsFromDB = async (identifier: string, queryLimit?: number) => {
-  const limit = Number(queryLimit) || 10;
-
-  const isObjectId = Types.ObjectId.isValid(identifier);
-  const findQuery = isObjectId ? { _id: new Types.ObjectId(identifier) } : { slug: identifier };
-
-  const sourceProduct = await getProductModel(connection)
-    .findOne(findQuery)
-    .select('_id tags category storePreference')
-    .lean();
-
-  if (!sourceProduct) {
-    throw new AppError('Source product not found for recommendations.', httpStatus.NOT_FOUND);
-  }
-
-  const { tags = [], category, storePreference, _id } = sourceProduct;
-
-  const queryObj = {
-    limit,
-    page: 1,
-    sort: '-relevanceScore,-createdAt', // QueryBuilder will auto-parse this into { relevanceScore: -1, createdAt: -1 }
-  };
-
-  const relatedProductsQuery = new QueryBuilder<IProduct>(getProductModel(connection), queryObj)
-    .addStage({
-      $match: {
-        _id: { $ne: _id },
-        isPublished: true,
-        status: PRODUCT_STATUS.Active,
-        $or: [{ storePreference }, { storePreference: { $exists: false } }],
-        $and: [
-          {
-            $or: [{ category: category }, { tags: { $in: tags } }],
-          },
-        ],
-      },
-    })
-    // Calculate Overlap Stage
-    .addStage({
-      $addFields: {
-        tagOverlapCount: {
-          $size: {
-            $setIntersection: [{ $ifNull: ['$tags', []] }, tags],
-          },
-        },
-        isSameCategory: {
-          $cond: [{ $eq: ['$category', category] }, 1, 0],
-        },
-      },
-    })
-    // Calculate Final Relevance Score
-    .addStage({
-      $addFields: {
-        relevanceScore: {
-          $add: [{ $multiply: ['$tagOverlapCount', 2] }, '$isSameCategory'],
-        },
-      },
-    })
-    .sort()
-    .paginate()
-    .populate({
-      from: 'badges',
-      localField: 'badges',
-      foreignField: '_id',
-      as: 'badges',
-      pipeline: [{ $match: { isActive: true } }],
-    })
-    .populate({
-      from: 'reviews',
-      localField: '_id',
-      foreignField: 'product',
-      as: 'allReviews',
-      pipeline: [{ $match: { isPublished: true, isDeleted: false } }],
-    })
-    // Shape Stage 1: Extract Default Variant
-    .addStage({
-      $project: {
-        _id: 1,
-        title: 1,
-        slug: 1,
-        defaultImage: 1,
-        defaultPriceBDT: 1,
-        badges: { $ifNull: ['$badges', []] },
-        allReviews: 1,
-        createdAt: 1,
-        relevanceScore: 1,
-        defaultVariant: {
-          $arrayElemAt: [
-            {
-              $filter: {
-                input: { $ifNull: ['$variants', []] },
-                as: 'v',
-                cond: { $eq: ['$$v.sku', '$defaultVariantSku'] },
-              },
-            },
-            0,
-          ],
-        },
-      },
-    })
-    // Shape Stage 2: Format to IStandardCollectionItem
-    .addStage({
-      $project: {
-        _id: 1,
-        title: 1,
-        slug: 1,
-        image: '$defaultImage',
-        price: '$defaultPriceBDT',
-        oldPrice: '$defaultVariant.oldPriceBDT',
-        discountPercentage: '$defaultVariant.discountPercentage',
-        type: { $literal: 'standard' },
-        badges: 1,
-        createdAt: 1,
-        relevanceScore: 1,
-        averageRating: {
-          $cond: [
-            { $gt: [{ $size: { $ifNull: ['$allReviews', []] } }, 0] },
-            { $round: [{ $avg: '$allReviews.rating' }, 1] },
-            0,
-          ],
-        },
-        totalReviews: { $size: { $ifNull: ['$allReviews', []] } },
-      },
-    });
-
-  const result = await relatedProductsQuery.exec();
-  const meta = await relatedProductsQuery.getQueryMeta();
-
-  return { meta, result };
-};
-
 const getSingleProductFromDB = async (identifier: string) => {
   const isObjectId = Types.ObjectId.isValid(identifier);
 
-  // Admin (ID): Fetch strictly by ID, regardless of publish status.
+  // Admin/IMS (ID): Fetch strictly by ID, regardless of publish status.
   // Public (Slug): Fetch by slug, MUST be published and not deleted.
   const findQuery = isObjectId
     ? { _id: new Types.ObjectId(identifier) }
     : { slug: identifier, isDeleted: { $ne: true }, isPublished: true };
 
   // Strip out internal admin fields to save bandwidth for public requests.
-  const projection = isObjectId ? '' : '-adminNotes -searchHitCount -__v -createdAt -updatedAt';
+  // Removed '-searchHitCount' because it does not exist in your provided schema.
+  const projection = isObjectId ? '' : '-adminNotes -__v -createdAt -updatedAt';
 
-  // 1. Fetch the Core Product with Populations
-  const product = await ProductModel.findOne(findQuery)
+  const productQuery = ProductModel.findOne(findQuery)
     .select(projection)
-    .populate({
-      path: 'badges',
-      match: { isActive: true },
-      select: 'name text color backgroundColor priority type',
-    })
     .populate({
       path: 'category',
       select: 'name slug parentCategory',
@@ -433,51 +267,16 @@ const getSingleProductFromDB = async (identifier: string) => {
       },
     })
     .populate({
-      path: 'verifiedBrandId',
+      path: 'brand',
       select: 'name slug logo',
-    })
-    .lean();
+    });
+
+  const product = await productQuery.lean();
 
   if (!product) return null;
 
-  // 2. Fetch Badges and Review Stats IN PARALLEL for maximum performance
-  const [defaultVariantBadges, reviewStats] = await Promise.all([
-    // Promise A: Dynamic Badges for the default variant
-    product.defaultVariantSku
-      ? BadgeServices(connection, storePreference).getVariantSpecificBadges(
-          product._id.toString(),
-          product.defaultVariantSku,
-        )
-      : Promise.resolve([]),
-
-    // Promise B: Calculate aggregate review stats directly from the Review collection
-    ReviewModel.aggregate([
-      {
-        $match: {
-          product: product._id,
-          isPublished: true,
-          isDeleted: false,
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          averageRating: { $avg: '$rating' },
-          totalReviews: { $sum: 1 },
-        },
-      },
-    ]),
-  ]);
-
-  const averageRating = reviewStats[0]?.averageRating ? Number(reviewStats[0].averageRating.toFixed(1)) : 0;
-  const totalReviews = reviewStats[0]?.totalReviews || 0;
-
-  return {
-    ...product,
-    averageRating,
-    totalReviews,
-    variantSpecificBadges: defaultVariantBadges,
-  };
+  // Return the lightweight, raw product directly for the IMS
+  return product;
 };
 
 const softDeleteProductFromDB = async (id: string) => {
@@ -501,74 +300,6 @@ const restoreArchivedProductIntoDB = async (id: string) => {
   return product;
 };
 
-const getPendingProductsFromDB = async (query: Record<string, any>) => {
-  const productQuery = new QueryBuilder<IProduct>(ProductModel, {
-    ...query,
-    requiresAdminVerification: true,
-  })
-    .search(productSearchableFields)
-    .filter()
-    .sort()
-    .paginate()
-    .limitFields();
-
-  const result = await productQuery.exec();
-  const meta = await productQuery.getQueryMeta();
-  return { meta, result };
-};
-
-// Approve (External/Scraper -> Inventory)
-const approveProductIntoInventory = async (
-  id: string,
-  payload: { verifiedBrandId: string; title?: string; category?: string; isPublished?: boolean },
-) => {
-  const willPublish = payload.isPublished ?? false;
-
-  const update: any = {
-    $set: {
-      verifiedBrandId: new Types.ObjectId(payload.verifiedBrandId),
-      requiresAdminVerification: false,
-
-      sourceType: PRODUCT_SOURCE_TYPE.MANUAL,
-      status: willPublish ? PRODUCT_STATUS.Active : PRODUCT_STATUS.Draft,
-      isPublished: willPublish,
-    },
-    $unset: {
-      brandForExternal: 1,
-    },
-  };
-
-  if (payload.title) {
-    update.$set.title = payload.title;
-    update.$set.slug = buildProductSlug(payload.title);
-  }
-  if (payload.category) update.$set.category = new Types.ObjectId(payload.category);
-
-  const updated = await ProductModel.findByIdAndUpdate(id, update, { new: true, runValidators: true });
-  if (!updated) throw new AppError('Product Not Found!', httpStatus.NOT_FOUND);
-
-  // If admin chose to publish during approval, validate publishability
-  if (willPublish) {
-    const merged = updated.toObject();
-    try {
-      productValidationSchemas.publishableProductZodSchema.shape.body.parse({
-        ...merged,
-        category: merged.category?.toString?.(),
-        verifiedBrandId: merged.verifiedBrandId?.toString?.() ?? null,
-        badges: merged.badges?.map?.((b: any) => b.toString?.()),
-        frequentlyBoughtTogether: merged.frequentlyBoughtTogether?.map?.((b: any) => b.toString?.()),
-      });
-    } catch {
-      throw new AppError(
-        'Approved but cannot publish: product is incomplete. Please edit and complete it before publishing.',
-        httpStatus.BAD_REQUEST,
-      );
-    }
-  }
-
-  return updated;
-};
-
 const getArchivedProductsFromDB = async (query: Record<string, any>) => {
   const archivedQuery = new QueryBuilder<IProduct>(ProductModel, {
     ...query,
@@ -590,15 +321,16 @@ const getArchivedProductsFromDB = async (query: Record<string, any>) => {
     })
     .populate({
       from: 'brands',
-      localField: 'verifiedBrandId',
+      localField: 'brand',
       foreignField: '_id',
-      as: 'verifiedBrandId',
+      as: 'brand',
       unwind: true,
       pipeline: [{ $project: { name: 1, slug: 1 } }],
     })
     .paginate()
     .limitFields()
     .exec();
+
   const meta = await archivedQuery.getQueryMeta();
   return { meta, result };
 };
@@ -630,6 +362,7 @@ const deleteProductsPermanentlyFromDB = async (productIds: string[]) => {
     );
   }
 
+  // Extract Cloudinary Public IDs from both main images array and variant subdocuments
   const publicIdsToDelete: string[] = [];
   productsToDelete.forEach((product: any) => {
     product.images?.forEach((img: any) => {
@@ -651,34 +384,12 @@ const deleteProductsPermanentlyFromDB = async (productIds: string[]) => {
     throw new AppError('No archived products were deleted (already deleted or not found).', httpStatus.NOT_FOUND);
   }
 
-  // Cleanup Cloudinary
+  // Cleanup Cloudinary (Fire-and-forget so the user isn't kept waiting)
   if (uniquePublicIds.length > 0) {
-    // fire-and-forget but safely handled
     Promise.allSettled(uniquePublicIds.map((pid) => deleteFileFromCloudinary(pid))).catch((e) => console.error(e));
   }
 
   return result;
-};
-
-const getRecentlyViewedProductsFromDB = async (ids: string[]) => {
-  if (!ids || ids.length === 0) return [];
-
-  const objectIds = ids.filter((id) => mongoose.Types.ObjectId.isValid(id)).map((id) => new Types.ObjectId(id));
-
-  const products = await ProductModel.find({
-    _id: { $in: objectIds },
-    isDeleted: { $ne: true },
-    isPublished: true,
-    status: PRODUCT_STATUS.Active,
-  })
-    .select('title slug images defaultImage defaultPriceBDT defaultVariantSku category')
-    .lean();
-
-  // reorder to match client order
-  const map = new Map<string, any>();
-  products.forEach((p: any) => map.set(p._id.toString(), p));
-
-  return objectIds.map((id) => map.get(id.toString())).filter(Boolean);
 };
 
 // complex function, this is designed for partial update , becareful before touching it

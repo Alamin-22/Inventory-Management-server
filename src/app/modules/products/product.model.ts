@@ -149,4 +149,4 @@ ProductSchema.pre(/^find/, function (next) {
   next();
 });
 
-export const Product = mongoose.model<IProduct, TProductModel>('Product', ProductSchema);
+export const ProductModel = mongoose.model<IProduct, TProductModel>('Product', ProductSchema);
