@@ -1,12 +1,19 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { sendEmail } from '@utils/sendEmail';
 import { IOrder, IOrderItem } from './Order.interface';
 import { config } from '@config/env';
 import { TProductModel } from '../products/product.model';
+import { IProduct } from '../products/product.interface';
+import { StockNotificationEmailParams } from '@app/Email_Templates/Product-Related/product.email.interface';
+
 import OutOfStockNotification from '@app/Email_Templates/Product-Related/OutOfStockNotification';
 import LowStockNotification from '@app/Email_Templates/Product-Related/LowStockNotification';
 import OrderConfirmedEmail from '@app/Email_Templates/Order-Related/OrderConfirmedEmail';
 import OrderStatusUpdateEmail from '@app/Email_Templates/Order-Related/OrderStatusUpdateEmail';
+import {
+  OrderConfirmedEmailParams,
+  OrderItemForEmail,
+  OrderStatusUpdateEmailParams,
+} from '@app/Email_Templates/Order-Related/oder.email.interface';
 
 export const getBrandConfig = () => {
   return {
@@ -20,10 +27,10 @@ export const getBrandConfig = () => {
   };
 };
 
-/**
- * Optimized: Fetches all products in a single batch query.
- */
-export const _prepareItemsForEmail = async (orderItems: IOrderItem[], ProductModel: TProductModel) => {
+export const _prepareItemsForEmail = async (
+  orderItems: IOrderItem[],
+  ProductModel: TProductModel,
+): Promise<OrderItemForEmail[]> => {
   if (!orderItems?.length) return [];
 
   const productIds = [...new Set(orderItems.map((item) => item.product.toString()))];
@@ -31,14 +38,15 @@ export const _prepareItemsForEmail = async (orderItems: IOrderItem[], ProductMod
   const products = await ProductModel.find({ _id: { $in: productIds } })
     .lean()
     .exec();
-  const productMap = new Map(products.map((p) => [p._id.toString(), p]));
+
+  const productMap = new Map<string, IProduct>(products.map((p) => [p._id.toString(), p as unknown as IProduct]));
 
   return orderItems.map((oi) => {
-    const productDoc: any = productMap.get(oi.product.toString());
+    const productDoc = productMap.get(oi.product.toString());
     let imageUrl = '';
 
     if (productDoc) {
-      const variant = productDoc.variants?.find((v: any) => v.sku === oi.sku);
+      const variant = productDoc.variants?.find((v) => v.sku === oi.sku);
       imageUrl = variant?.image?.url || productDoc.images?.[0]?.url || '';
     }
 
@@ -62,7 +70,7 @@ const sendOrderReceiptToCustomer = async (order: IOrder, ProductModel: TProductM
   const brandConfig = getBrandConfig();
   const itemsForEmail = await _prepareItemsForEmail(order.items, ProductModel);
 
-  const emailParams = {
+  const emailParams: OrderConfirmedEmailParams = {
     customerName: order.customerName,
     orderNumber: order.orderId,
     createdAt: order.createdAt!,
@@ -75,9 +83,7 @@ const sendOrderReceiptToCustomer = async (order: IOrder, ProductModel: TProductM
   };
 
   const subject = `[${brandConfig.companyName}] Your Order Receipt: ${order.orderId}`;
-
-  // Plugs into your existing template
-  const htmlContent = OrderConfirmedEmail(emailParams as any);
+  const htmlContent = OrderConfirmedEmail(emailParams);
 
   // Format the PDF buffer for Nodemailer
   const attachments = pdfBuffer
@@ -90,32 +96,30 @@ const sendOrderReceiptToCustomer = async (order: IOrder, ProductModel: TProductM
       ]
     : [];
 
-  // Assuming your sendEmail utility takes attachments as the 4th parameter
   await sendEmail(order.customerEmail, subject, htmlContent, attachments).catch(console.error);
 };
 
 /**
  * Sent strictly to the Admin when an item drops below the threshold.
- * Uses your existing LowStock/OutOfStock HTML templates.
  */
 const sendAdminLowStockAlert = async (productTitle: string, sku: string, currentStock: number, threshold: number) => {
   const brandConfig = getBrandConfig();
   const isOutOfStock = currentStock <= 0;
 
-  const notifyParams = {
+  // Type-checked against StockNotificationEmailParams
+  const notifyParams: StockNotificationEmailParams = {
     sku,
     productTitle,
     companyName: brandConfig.companyName,
     companyLogoUrl: brandConfig.companyLogoUrl,
     currentQty: currentStock,
     threshold,
+    clientUrl: brandConfig.clientUrl, // Provided for the dashboard link
   };
 
   const subject = `[${brandConfig.companyName} IMS Alert] ${isOutOfStock ? 'OUT OF STOCK' : 'LOW STOCK'} - ${sku}`;
 
-  const htmlContent = isOutOfStock
-    ? OutOfStockNotification(notifyParams as any)
-    : LowStockNotification(notifyParams as any);
+  const htmlContent = isOutOfStock ? OutOfStockNotification(notifyParams) : LowStockNotification(notifyParams);
 
   await sendEmail(brandConfig.adminEmails, subject, htmlContent).catch(console.error);
 };
@@ -134,7 +138,7 @@ const sendOrderStatusUpdateEmail = async (
   const brandConfig = getBrandConfig();
   const itemsForEmail = await _prepareItemsForEmail(order.items, ProductModel);
 
-  const emailParams = {
+  const emailParams: OrderStatusUpdateEmailParams = {
     customerName: order.customerName,
     orderNumber: order.orderId,
     items: itemsForEmail,
@@ -144,7 +148,7 @@ const sendOrderStatusUpdateEmail = async (
   };
 
   const subject = `[${brandConfig.companyName}] Order #${order.orderId} Update: ${updateTitle}`;
-  const htmlContent = OrderStatusUpdateEmail(emailParams as any);
+  const htmlContent = OrderStatusUpdateEmail(emailParams);
 
   await sendEmail(order.customerEmail, subject, htmlContent).catch(console.error);
 };

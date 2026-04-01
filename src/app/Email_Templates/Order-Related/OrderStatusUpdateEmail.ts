@@ -11,12 +11,11 @@ const OrderStatusUpdateEmail = (params: OrderStatusUpdateEmailParams) => {
     companyLogoUrl,
     supportEmail,
     supportPhone,
-    orderTrackingLink,
+    clientUrl,
     themeColor,
   } = params;
 
   const brandColor = themeColor || '#2563EB';
-
   const whatsAppNumber = supportPhone ? supportPhone.replace(/[^0-9]/g, '') : '';
 
   // Generate Items Summary HTML (Compact view)
@@ -26,7 +25,7 @@ const OrderStatusUpdateEmail = (params: OrderStatusUpdateEmailParams) => {
       <tr style="border-bottom: 1px solid #f0f0f0;">
         <td style="padding: 12px 0; width: 60px; vertical-align: top;">
            <img 
-             src="${item.imageUrl}" 
+             src="${item.imageUrl || 'https://via.placeholder.com/50?text=No+Image'}" 
              alt="${item.title}" 
              width="50" 
              style="display: block; border-radius: 4px; border: 1px solid #eeeeee;" 
@@ -61,12 +60,11 @@ const OrderStatusUpdateEmail = (params: OrderStatusUpdateEmailParams) => {
             
             <tr>
               <td style="padding: 30px 40px; border-bottom: 1px solid #eeeeee; text-align: left;">
-                <img 
-                  src="${companyLogoUrl}" 
-                  alt="${companyName}" 
-                  height="40" 
-                  style="display: block; height: 40px; width: auto;" 
-                />
+                ${
+                  companyLogoUrl
+                    ? `<img src="${companyLogoUrl}" alt="${companyName}" height="40" style="display: block; height: 40px; width: auto;" />`
+                    : `<h2 style="margin: 0; color: #111827; font-size: 24px;">${companyName}</h2>`
+                }
               </td>
             </tr>
 
@@ -97,19 +95,18 @@ const OrderStatusUpdateEmail = (params: OrderStatusUpdateEmailParams) => {
                 </div>
 
                 <div style="margin-bottom: 30px;">
-                  <p style="margin: 0 0 8px; font-size: 14px; color: #4b5563;">
-                    You can view the full details and track your package securely by visiting this link:
+                  <p style="margin: 0 0 15px; font-size: 14px; color: #4b5563;">
+                    You can view the full details of your order in our portal:
                   </p>
-                  <div style="background-color: #f0f9ff; padding: 12px; border-radius: 4px; border: 1px dashed ${brandColor}; word-break: break-all;">
-                    <a href="${orderTrackingLink}" target="_blank" style="
-                      font-size: 14px; 
-                      color: ${brandColor}; 
-                      text-decoration: none; 
-                      font-weight: 500;
-                    ">
-                      ${orderTrackingLink}
-                    </a>
-                  </div>
+                  <table border="0" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td align="center" bgcolor="${brandColor}" style="border-radius: 4px;">
+                        <a href="${clientUrl}" target="_blank" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                          View Order Details
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
                 </div>
 
                 <div style="border-top: 1px solid #eeeeee; padding-top: 25px;">
@@ -137,15 +134,19 @@ const OrderStatusUpdateEmail = (params: OrderStatusUpdateEmailParams) => {
                       </p>
                     </td>
                     <td style="vertical-align: top; text-align: right;">
-                       <a href="https://wa.me/${whatsAppNumber}" target="_blank" style="text-decoration: none; display: inline-block;">
-                         <img 
-                           src="https://res.cloudinary.com/dydv6uxzo/image/upload/v1753341562/ReLoved_Gadget/Assets/icons/whatsapp-icon_fml5kj.png" 
-                           alt="WhatsApp" 
-                           width="32" 
-                           height="32" 
-                           style="display: block;"
-                         />
-                       </a>
+                       ${
+                         whatsAppNumber
+                           ? `<a href="https://wa.me/${whatsAppNumber}" target="_blank" style="text-decoration: none; display: inline-block;">
+                             <img 
+                               src="https://res.cloudinary.com/dydv6uxzo/image/upload/v1753341562/ReLoved_Gadget/Assets/icons/whatsapp-icon_fml5kj.png" 
+                               alt="WhatsApp" 
+                               width="32" 
+                               height="32" 
+                               style="display: block;"
+                             />
+                           </a>`
+                           : ''
+                       }
                     </td>
                   </tr>
                 </table>
@@ -162,7 +163,7 @@ const OrderStatusUpdateEmail = (params: OrderStatusUpdateEmailParams) => {
           </table>
           
           <p style="margin: 20px 0 0; font-size: 12px; color: #9ca3af; text-align: center;">
-             This is an automated status update for your order.
+             This is an automated status update for your IMS order.
           </p>
           
         </td>
