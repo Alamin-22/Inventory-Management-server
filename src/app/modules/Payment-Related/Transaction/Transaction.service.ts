@@ -10,7 +10,7 @@ import { QueryBuilder } from '@app/classes/QueryBuilder';
 import { TransactionSearchableFields } from './Transaction.constant';
 import { TransactionEmailService } from './Transaction.email';
 import { User } from '@app/modules/user/user.model';
-import puppeteer from 'puppeteer/lib/types';
+import puppeteer from 'puppeteer';
 
 /**
  * RECORD MANUAL PAYMENT (POS/Admin)

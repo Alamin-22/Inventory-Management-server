@@ -1,82 +1,63 @@
-import AuthValidationMiddleWare from '@app/middlewares/AuthValidationMiddleWare';
-import { USER_ROLE } from '@app/modules/user/user.constants';
 import express from 'express';
-import { TransactionControllers } from './Transaction.controller';
+import AuthValidationMiddleWare from '@app/middlewares/AuthValidationMiddleWare';
+import CheckAuthPermissionMiddleware from '@app/middlewares/CheckAuthPermissionMiddleware';
 import ValidateRequestMiddleWare from '@app/middlewares/ValidateRequestMiddleWare';
+import { USER_ROLE } from '@app/modules/user/user.constants';
+import { AdminPermissions } from '@app/modules/admin/admin.constant';
+import { TransactionControllers } from './Transaction.controller';
 import { TransactionValidations } from './Transaction.validation';
 
 const router = express.Router();
 
-// =========================================================
-//  CUSTOMER ROUTES
-// =========================================================
+// 1. ADMIN LEDGER ACCESS
 
-// Get personal payment history
-router.get(
-  '/my-transactions',
-  AuthValidationMiddleWare(USER_ROLE.customer),
-  TransactionControllers.getAllTransactionsByCustomer,
-);
-
-// Download specific invoice
-router.get(
-  '/download-invoice/:transactionId',
-  AuthValidationMiddleWare(USER_ROLE.customer, USER_ROLE.admin, USER_ROLE.super_admin),
-  TransactionControllers.downloadInvoicePdf,
-);
-
-// =========================================================
-// 🛡️ ADMIN ROUTES
-// =========================================================
-
-// Global Ledger View
-//transactions
 router.get(
   '/',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.VIEW_ANALYTICS),
   TransactionControllers.getAllTransactions,
 );
 
-// Order specific financial audit
+// 2. POS OPERATIONS (Payments & Refunds)
 router.get(
-  '/audit/:orderNumber',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
+  '/audit/:orderId',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_STOCK),
   TransactionControllers.getOrderFinancialAudit,
 );
 
-// Get Refund Preview (Before processing)
-router.get(
-  '/refund-preview/:orderNumber',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  TransactionControllers.getRefundPreview,
-);
-
-// Record Manual Payment
 router.post(
-  '/manual-payment/:orderNumber',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
+  '/manual-payment/:orderId',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_STOCK),
   ValidateRequestMiddleWare(TransactionValidations.addManualTransactionSchema),
   TransactionControllers.addManualTransaction,
 );
 
-// Record Manual Refund
+router.get(
+  '/refund-preview/:orderId',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_STOCK),
+  TransactionControllers.getRefundPreview,
+);
+
 router.post(
-  '/manual-refund/:orderNumber',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
+  '/manual-refund/:orderId',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_STOCK),
   ValidateRequestMiddleWare(TransactionValidations.createManualRefundSchema),
   TransactionControllers.createManualRefund,
 );
 
-// Download Full Order Statement
 router.get(
-  '/download-statement/:orderNumber',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  TransactionControllers.downloadOrderStatementPdf,
+  '/download-invoice/:transactionId',
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
+  TransactionControllers.downloadInvoicePdf,
 );
 
 router.get(
   '/:transactionId',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin, USER_ROLE.customer),
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
   TransactionControllers.getSingleTransaction,
 );
 

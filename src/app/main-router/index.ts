@@ -6,6 +6,7 @@ import { AdminRoutes } from '@app/modules/admin/admin.route';
 import { CategoryRoutes } from '@app/modules/Category/Category.route';
 import { ProductRoutes } from '@app/modules/products/product.router';
 import { OrderRoutes } from '@app/modules/Order/Order.route';
+import { TransactionRoutes } from '@app/modules/Payment-Related/Transaction/Transaction.route';
 
 const router = Router();
 
@@ -20,6 +21,7 @@ const moduleRoutes = [
   { path: '/categories', route: CategoryRoutes },
   { path: '/products', route: ProductRoutes },
   { path: '/orders', route: OrderRoutes },
+  { path: '/transactions', route: TransactionRoutes },
   // { path: '/audit-logs', route: AuditLogRoutes },
 ];
 

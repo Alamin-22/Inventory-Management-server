@@ -2,30 +2,27 @@ import { catchAsync } from '@utils/catchAsync';
 import { RequestHandler } from 'express';
 import httpStatus from 'http-status';
 import { TransactionServices } from './Transaction.service';
-import { TBrand } from '@app/modules/auth/auth.interface';
 import sendResponse from '@utils/sendResponse';
 
 const addManualTransaction: RequestHandler = catchAsync(async (req, res) => {
-  const service = TransactionServices(req.dbConnection!, req.brand as TBrand);
-  const { orderNumber } = req.params;
-  const adminId = req.user.userId;
+  const { orderId } = req.params;
+  const adminId = req.user.id;
 
-  const result = await service.addManualTransaction(orderNumber, req.body, adminId);
+  const result = await TransactionServices.addManualTransaction(orderId, req.body, adminId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Manual transaction recorded successfully.',
+    message: 'Manual transaction recorded and order summary updated.',
     data: result,
   });
 });
 
 const createManualRefund: RequestHandler = catchAsync(async (req, res) => {
-  const service = TransactionServices(req.dbConnection!, req.brand as TBrand);
-  const { orderNumber } = req.params;
-  const adminId = req.user.userId;
+  const { orderId } = req.params;
+  const adminId = req.user.id;
 
-  const result = await service.createManualRefund(orderNumber, req.body, adminId);
+  const result = await TransactionServices.createManualRefund(orderId, req.body, adminId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -36,101 +33,56 @@ const createManualRefund: RequestHandler = catchAsync(async (req, res) => {
 });
 
 const getRefundPreview: RequestHandler = catchAsync(async (req, res) => {
-  const service = TransactionServices(req.dbConnection!, req.brand as TBrand);
-  const { orderNumber } = req.params;
-
-  const result = await service.getRefundPreview(orderNumber);
+  const { orderId } = req.params;
+  const result = await TransactionServices.getRefundPreview(orderId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Refund calculations retrieved.',
+    message: 'Refund breakdown retrieved.',
     data: result,
   });
 });
 
 const getAllTransactions: RequestHandler = catchAsync(async (req, res) => {
-  const service = TransactionServices(req.dbConnection!, req.brand as TBrand);
-
-  const result = await service.getAllTransactionsFromDB(req.query);
-
+  const result = await TransactionServices.getAllTransactionsFromDB(req.query);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Ledger retrieved successfully.',
+    message: 'System ledger retrieved successfully.',
     data: result,
   });
 });
 
 const getSingleTransaction: RequestHandler = catchAsync(async (req, res) => {
-  const service = TransactionServices(req.dbConnection!, req.brand as TBrand);
   const { transactionId } = req.params;
-  const viewerId = req.user.userId;
-  const role = req.user.role;
-
-  const result = await service.getSingleTransaction(transactionId, viewerId, role);
-
+  const result = await TransactionServices.getSingleTransaction(transactionId);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Transaction details retrieved successfully.',
+    message: 'Transaction details retrieved.',
     data: result,
   });
 });
 
 const getOrderFinancialAudit: RequestHandler = catchAsync(async (req, res) => {
-  const service = TransactionServices(req.dbConnection!, req.brand as TBrand);
-  const { orderNumber } = req.params;
-
-  const result = await service.getOrderFinancialAudit(orderNumber);
-
+  const { orderId } = req.params;
+  const result = await TransactionServices.getOrderFinancialAudit(orderId);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Order financial history retrieved.',
+    message: 'Financial audit for order completed.',
     data: result,
   });
 });
 
 const downloadInvoicePdf: RequestHandler = catchAsync(async (req, res) => {
-  const service = TransactionServices(req.dbConnection!, req.brand as TBrand);
   const { transactionId } = req.params;
-  const viewerId = req.user.userId;
-  const role = req.user.role;
-  const pdfBuffer = await service.downloadInvoicePdf(transactionId, viewerId, role);
+  const pdfBuffer = await TransactionServices.downloadInvoicePdf(transactionId);
 
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename=Invoice-${transactionId}.pdf`);
+  res.setHeader('Content-Disposition', `attachment; filename=Receipt-${transactionId}.pdf`);
   res.send(pdfBuffer);
-});
-
-const downloadOrderStatementPdf: RequestHandler = catchAsync(async (req, res) => {
-  const service = TransactionServices(req.dbConnection!, req.brand as TBrand);
-  const { orderNumber } = req.params;
-
-  const pdfBuffer = await service.generateOrderStatementPdf(orderNumber);
-
-  res.writeHead(httpStatus.OK, {
-    'Content-Type': 'application/pdf',
-    'Content-Disposition': `attachment; filename=Statement-${orderNumber}.pdf`,
-    'Content-Length': pdfBuffer.length,
-  });
-
-  return res.end(pdfBuffer, 'binary');
-});
-
-const getAllTransactionsByCustomer: RequestHandler = catchAsync(async (req, res) => {
-  const service = TransactionServices(req.dbConnection!, req.brand as TBrand);
-  const customerId = req.user.userId;
-
-  const result = await service.getAllTransactionsByCustomer(customerId);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Your payment history retrieved.',
-    data: result,
-  });
 });
 
 export const TransactionControllers = {
@@ -141,6 +93,4 @@ export const TransactionControllers = {
   getSingleTransaction,
   getOrderFinancialAudit,
   downloadInvoicePdf,
-  downloadOrderStatementPdf,
-  getAllTransactionsByCustomer,
 };
