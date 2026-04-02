@@ -3,7 +3,6 @@ import { AuthRoutes } from '@app/modules/auth/auth.route';
 import { UserRoutes } from '@app/modules/user/user.router';
 import { CustomerRoutes } from '@app/modules/customer/customer.router';
 import { AdminRoutes } from '@app/modules/admin/admin.route';
-import { auditLogger } from '@app/middlewares/AuditLogger';
 import { CategoryRoutes } from '@app/modules/Category/Category.route';
 import { ProductRoutes } from '@app/modules/products/product.router';
 import { OrderRoutes } from '@app/modules/Order/Order.route';
@@ -33,7 +32,7 @@ if (authRoute) {
 const nonAuditedPaths = ['/auth'];
 
 // 2. THE SECURITY CAMERA (Audit Logger)
-router.use(auditLogger);
+// router.use(auditLogger);
 
 // 3. REGISTER ALL OTHER MODULES
 moduleRoutes
