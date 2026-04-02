@@ -93,7 +93,7 @@ const OrderSchema = new Schema<IOrder>(
 );
 
 // Performance Indexes optimized for Dashboard Queries
-OrderSchema.index({ orderId: 1 });
+// OrderSchema.index({ orderId: 1 });
 OrderSchema.index({ status: 1 });
 OrderSchema.index({ 'paymentInfo.paymentStatus': 1 });
 OrderSchema.index({ createdAt: -1 });

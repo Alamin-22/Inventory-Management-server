@@ -9,6 +9,7 @@ import { OrderRoutes } from '@app/modules/Order/Order.route';
 import { TransactionRoutes } from '@app/modules/Payment-Related/Transaction/Transaction.route';
 import { AuditLogRoutes } from '@app/modules/AuditLog/AuditLog.route';
 import { auditLogger } from '@app/middlewares/AuditLogger';
+import { AnalyticsRoutes } from '@app/modules/Analytics/Analytics.route';
 
 const router = Router();
 
@@ -25,6 +26,7 @@ const moduleRoutes = [
   { path: '/orders', route: OrderRoutes },
   { path: '/transactions', route: TransactionRoutes },
   { path: '/audit-logs', route: AuditLogRoutes },
+  { path: '/analytics', route: AnalyticsRoutes },
 ];
 
 // 1. REGISTER AUTH FIRST (To keep Login/Logout out of the Audit Logs)
