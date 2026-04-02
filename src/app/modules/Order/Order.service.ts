@@ -8,11 +8,19 @@ import { _decrementStockAndNotify, _restockItems, generateOrderId } from './Orde
 import { OrderRelatedEmails } from './Order.email';
 import { OrderModel } from './Order.model';
 import { ProductModel } from '../products/product.model';
+import { PRODUCT_STATUS } from '../products/product.constants';
+import { IProductVariant } from '../products/product.interface';
 
-// --- CREATE ORDER  ---
+// --- CREATE ORDER ---
 const createOrderIntoDB = async (payload: Partial<IOrder>, adminId?: string, pdfBuffer?: Buffer) => {
   if (!payload.items || payload.items.length === 0) {
     throw new AppError('Order must contain at least one item.', httpStatus.BAD_REQUEST);
+  }
+
+  // Conflict Detection: Prevent duplicate variant entries in the payload
+  const variantIds = payload.items.map((item) => item.variantId.toString());
+  if (new Set(variantIds).size !== variantIds.length) {
+    throw new AppError('This product is already added to the order.', httpStatus.BAD_REQUEST);
   }
 
   const session: ClientSession = await startSession();
@@ -24,25 +32,25 @@ const createOrderIntoDB = async (payload: Partial<IOrder>, adminId?: string, pdf
     let totalAmount = 0;
     const processedItems: IOrderItem[] = [];
 
-    // A. Verify Stock & Build Snapshot
+    // 1. Initial Validation & Financial Snapshot Loop
     for (const item of payload.items) {
       const productDoc = await ProductModel.findById(item.product).session(session);
 
-      if (!productDoc || !productDoc.isPublished) {
-        throw new AppError(`A product in your order is unavailable.`, httpStatus.BAD_REQUEST);
+      // Conflict Detection: Prevent ordering inactive products
+      if (!productDoc || !productDoc.isPublished || productDoc.status !== PRODUCT_STATUS.Active) {
+        throw new AppError('This product is currently unavailable.', httpStatus.BAD_REQUEST);
       }
 
-      const variant = productDoc.variants.find((v) => v._id?.toString() === item.variantId?.toString());
+      const variant = productDoc.variants.find(
+        (v: IProductVariant) => v._id?.toString() === item.variantId?.toString(),
+      );
       if (!variant) {
         throw new AppError(`Specific variant not found for ${productDoc.title}.`, httpStatus.BAD_REQUEST);
       }
 
       const currentStock = variant.inventory?.stock || 0;
       if (currentStock < item.quantity) {
-        throw new AppError(
-          `Only ${currentStock} items available for ${variant.name || productDoc.title}.`,
-          httpStatus.BAD_REQUEST,
-        );
+        throw new AppError(`Only ${currentStock} items available in stock`, httpStatus.BAD_REQUEST);
       }
 
       // Snapshot Financials
@@ -61,11 +69,10 @@ const createOrderIntoDB = async (payload: Partial<IOrder>, adminId?: string, pdf
       });
     }
 
-    // B. Deduct Stock & Trigger Restock Queue Alerts
     await _decrementStockAndNotify(processedItems, ProductModel, session);
 
-    // C. Build Order Ledger
-    const initialStatus = payload.status || ORDER_STATUS.PENDING;
+    //  Build POS Order Ledger
+    const initialStatus = payload.status || ORDER_STATUS.CONFIRMED;
     const orderId = generateOrderId();
 
     // Determine initial payment values
@@ -78,10 +85,10 @@ const createOrderIntoDB = async (payload: Partial<IOrder>, adminId?: string, pdf
 
     const orderData: Partial<IOrder> = {
       orderId,
-      customerName: payload.customerName,
+      customerName: payload.customerName || 'Walk-in Customer',
       customerPhone: payload.customerPhone,
       customerEmail: payload.customerEmail,
-      shippingAddress: payload.shippingAddress,
+      shippingAddress: payload.shippingAddress || 'In-Store POS',
       items: processedItems,
       totalAmount,
       paymentInfo: {
@@ -94,8 +101,8 @@ const createOrderIntoDB = async (payload: Partial<IOrder>, adminId?: string, pdf
       orderHistory: [
         {
           status: initialStatus,
-          title: 'Order Created',
-          description: 'Order placed and stock deducted successfully.',
+          title: 'Order Created via POS',
+          description: 'Order placed, payment processed, and stock deducted.',
           timestamp: new Date(),
           performedBy: adminId ? new Types.ObjectId(adminId) : undefined,
         },
@@ -107,7 +114,7 @@ const createOrderIntoDB = async (payload: Partial<IOrder>, adminId?: string, pdf
 
     await session.commitTransaction();
 
-    // D. Send Receipt (Non-Blocking)
+    // Fire Instant POS Invoice (Non-Blocking)
     OrderRelatedEmails.sendOrderReceiptToCustomer(createdOrder, ProductModel, pdfBuffer).catch(console.error);
   } catch (error) {
     await session.abortTransaction();
