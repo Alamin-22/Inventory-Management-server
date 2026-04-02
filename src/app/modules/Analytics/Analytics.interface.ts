@@ -1,4 +1,4 @@
-export type ComparisonMetric = {
+export type TComparisonMetric = {
   current: number;
   previous: number;
   change: number;
@@ -10,39 +10,33 @@ export interface IDueOrder {
   amountDue: number;
 }
 
-export interface ISalesSummary {
-  grossRevenue: ComparisonMetric; // Sum of all order totals (excluding cancelled)
-  netRevenue: ComparisonMetric; // Real cash (Sales - Refunds)
-  totalOrders: ComparisonMetric; // Order count
-  totalRefunds: ComparisonMetric; // Refund count/value
-  totalItemsSold: number;
-  statusCounts: {
-    pending: number;
-    confirmed: number;
-    shipped: number;
-    delivered: number;
-    cancelled: number;
-  };
-  dueOrders: IDueOrder[];
+export interface IInventoryAlerts {
+  totalVariants: number;
+  lowStockCount: number; // stock > 0 && stock <= threshold
+  outOfStockCount: number; // stock == 0
 }
 
-export interface ISalesOverTime {
-  _id: string; // Date string
-  revenue: number;
-  orders: number;
-}
-
-export interface ICategorySales {
-  category: string;
-  unitsSold: number;
-  revenue: number;
+export interface IDashboardSummary {
+  netRevenue: TComparisonMetric; // Transactions: (Sales - Refunds)
+  grossSales: TComparisonMetric; // Orders: Sum of totalAmount
+  orderCount: TComparisonMetric; // Count of non-cancelled orders
+  inventoryAlerts: IInventoryAlerts;
+  statusCounts: Record<string, number>;
+  topDebtors: IDueOrder[];
 }
 
 export interface IRestockItem {
   productId: string;
-  title: string;
+  productTitle: string;
+  variantName: string;
   sku: string;
   currentStock: number;
   threshold: number;
   category: string;
+}
+
+export interface ICategoryRevenue {
+  category: string;
+  revenue: number;
+  unitsSold: number;
 }
