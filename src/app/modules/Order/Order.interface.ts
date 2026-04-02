@@ -1,84 +1,52 @@
 import { Document, Types } from 'mongoose';
-import { OrderStatus } from './Order.constant';
-import { TBrand } from '../auth/auth.interface';
+import { OrderStatus, PaymentStatus } from './Order.constant';
 
 export interface IOrderItem {
   product: Types.ObjectId;
-  groupBuyId?: Types.ObjectId;
-  isGroupBuyItem?: boolean;
+  variantId: Types.ObjectId;
   sku: string;
-  quantity: number;
-  priceAtPurchase: number;
-  proratedDiscount?: number;
-  netPrice?: number;
-  fulfillmentType?: 'READY_TO_SHIP' | 'CROSS_BORDER';
-}
-
-export interface IAddress {
   name: string;
-  street1: string;
-  city: string;
-  state?: string;
-  postalCode: string;
-  country: string;
-  phone: string;
+  quantity: number;
+  unitPrice: number;
+  itemTotal: number;
 }
 
 export interface IPaymentInfo {
-  paymentType?: 'full' | 'partial' | 'remaining' | 'refunded';
+  paymentStatus: PaymentStatus;
   paidAmount: number;
   dueAmount: number;
-  bookingPercentageAtPurchase?: number;
 }
 
-
+// The Audit Trail for the Order
 export interface IOrderTimelineEvent {
   status: OrderStatus;
-
-  title: string; // e.g. "Arrived at Taiwan Airport"
-  description?: string; // e.g. "Flight CX202 - Ready for dispatch"
-  location?: string; // e.g. "Taipei, Taiwan"
-
+  title: string;
+  description?: string;
   timestamp: Date;
-  performedBy?: Types.ObjectId; // Admin ID who added this update
+  performedBy?: Types.ObjectId;
 }
 
 export interface IOrder extends Document {
-  orderNumber: string;
+  orderId: string;
 
-  storePreference: TBrand;
+  customerName: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  shippingAddress?: string;
 
-  user?: Types.ObjectId;
-  guestId?: string;
-  email: string;
   items: IOrderItem[];
 
-  subtotal: number;
-  tax?: number;
-  shippingFee?: number;
-  total: number;
-
-  discountAmount: number;
-  customDiscountAmount?: number;
-  couponCode: string;
-
+  totalAmount: number;
   paymentInfo: IPaymentInfo;
-  orderNote?: string;
 
-  billingAddress?: IAddress;
-  shippingAddress: IAddress;
-
-  fulfillmentStatus: OrderStatus;
-  orderType: 'standard' | 'pre-order' | 'group-buy';
+  status: OrderStatus;
 
   orderHistory: IOrderTimelineEvent[];
-  cancelToken: string | undefined;
+
+  // who crated this order
+  createdBy?: Types.ObjectId;
+
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
-  deliveredAt?: Date;
-  orderExpireAt?: Date;
-  reminderSent?: boolean;
-  finalReminderSent?: boolean;
-  abandonedReminderSent?: boolean;
 }

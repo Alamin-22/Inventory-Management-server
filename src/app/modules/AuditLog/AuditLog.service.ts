@@ -1,24 +1,20 @@
-import { Connection } from 'mongoose';
 import { QueryBuilder } from '@app/classes/QueryBuilder';
-import { getAuditLogModel } from './AuditLog.model';
-import { TBrand } from '../auth/auth.interface';
+import { AuditLogModel } from './AuditLog.model';
 
-export const AuditLogServices = (connection: Connection, storePreference: TBrand) => {
-  const AuditLogModel = getAuditLogModel(connection);
+const getAllLogsFromDB = async (query: Record<string, unknown>) => {
+  const auditLogQuery = new QueryBuilder(AuditLogModel, query)
+    .search(['email', 'resource', 'action'])
+    .filter()
+    .sort()
+    .paginate()
+    .limitFields();
 
-  const getAllLogsFromDB = async (query: Record<string, unknown>) => {
-    const auditLogQuery = new QueryBuilder(AuditLogModel, { ...query, storePreference })
-      .search(['email', 'resource', 'action'])
-      .filter()
-      .sort()
-      .paginate()
-      .limitFields();
+  const result = await auditLogQuery.exec();
+  const meta = await auditLogQuery.getQueryMeta();
 
-    const result = await auditLogQuery.exec();
-    const meta = await auditLogQuery.getQueryMeta();
+  return { meta, result };
+};
 
-    return { meta, result };
-  };
-
-  return { getAllLogsFromDB };
+export const AuditLogServices = {
+  getAllLogsFromDB,
 };

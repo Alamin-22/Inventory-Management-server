@@ -3,49 +3,31 @@ import httpStatus from 'http-status';
 import { catchAsync } from '@utils/catchAsync';
 import sendResponse from '@utils/sendResponse';
 import { ProductServices } from './product.service';
-import { CollectionServices } from '../Home-PageRelated-Sections/Collections/Collection.service';
-import { TBrand } from '../auth/auth.interface';
 
 const createProduct: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
-  const result = await service.createProductIntoDB(req.body);
+  const result = await ProductServices.createProductIntoDB(req.body);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product created successfully.',
+    message: 'Inventory product created successfully.',
     data: result,
   });
 });
 
+// Used by POS terminals
 const getAllProducts: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
-  const result = await service.getAllPublishedProductsFromDB(req.query);
+  const result = await ProductServices.getAllPublishedProductsFromDB(req.query);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Products retrieved successfully.',
+    message: 'POS Products retrieved successfully.',
     data: result,
   });
 });
 
-const getRelatedProducts = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
-  const { identifier } = req.params;
-  const { limit } = req.query;
-
-  const result = await service.getRelatedProductsFromDB(identifier, limit ? Number(limit) : 10);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Related products retrieved successfully',
-    data: result,
-  });
-});
-
+// Used by Admin/Manager Dashboard
 const getAllProductsForDashboard: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
-  const result = await service.getAllProductsForDashboardFromDB(req.query);
+  const result = await ProductServices.getAllProductsForDashboardFromDB(req.query);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -55,9 +37,8 @@ const getAllProductsForDashboard: RequestHandler = catchAsync(async (req, res) =
 });
 
 const getSingleProduct: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
   const { identifier } = req.params;
-  const result = await service.getSingleProductFromDB(identifier);
+  const result = await ProductServices.getSingleProductFromDB(identifier);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -67,22 +48,20 @@ const getSingleProduct: RequestHandler = catchAsync(async (req, res) => {
 });
 
 const updateProduct: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
   const { id } = req.params;
-  const result = await service.updateProductIntoDB(id, req.body);
+  const result = await ProductServices.updateProductIntoDB(id, req.body);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product updated successfully.',
+    message: 'Inventory product updated successfully.',
     data: result,
   });
 });
 
 const toggleStatus = catchAsync(async (req, res) => {
   const { id } = req.params;
-  const service = ProductServices(req.dbConnection!, req.brand!);
 
-  const result = await service.toggleProductStatus(id, req.body.isPublished);
+  const result = await ProductServices.toggleProductStatus(id, req.body.isPublished);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -93,13 +72,8 @@ const toggleStatus = catchAsync(async (req, res) => {
 });
 
 const deleteProduct: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
   const { id } = req.params;
-  const result = await service.softDeleteProductFromDB(id);
-
-  const collectionService = CollectionServices(req.dbConnection!, req.brand as TBrand);
-
-  await collectionService.removeProductFromAllCollections(result._id.toString());
+  const result = await ProductServices.softDeleteProductFromDB(id);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -110,43 +84,18 @@ const deleteProduct: RequestHandler = catchAsync(async (req, res) => {
 });
 
 const restoreProduct: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
   const { id } = req.params;
-  const result = await service.restoreArchivedProductIntoDB(id);
+  const result = await ProductServices.restoreArchivedProductIntoDB(id);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Product restored successfully.',
-    data: result,
-  });
-});
-
-const getPendingProducts: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
-  const result = await service.getPendingProductsFromDB(req.query);
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Pending products retrieved successfully.',
-    data: result,
-  });
-});
-
-const approveProduct: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
-  const { id } = req.params;
-  const result = await service.approveProductIntoInventory(id, req.body);
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Product approved successfully.',
+    message: 'Product restored to Draft successfully.',
     data: result,
   });
 });
 
 const getArchivedProductsForDashboard: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
-  const result = await service.getArchivedProductsFromDB(req.query);
+  const result = await ProductServices.getArchivedProductsFromDB(req.query);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -157,35 +106,14 @@ const getArchivedProductsForDashboard: RequestHandler = catchAsync(async (req, r
 });
 
 const deleteProductsPermanently: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
   const { productIds } = req.body;
 
-  const result = await service.deleteProductsPermanentlyFromDB(productIds);
-
-  // Cleanup Collections for PERMANENT delete
-  const collectionService = CollectionServices(req.dbConnection!, req.brand as TBrand);
-
-  // Loop through the deleted IDs to clean up all collections
-  await Promise.all(productIds.map((id: string) => collectionService.removeProductFromAllCollections(id)));
+  const result = await ProductServices.deleteProductsPermanentlyFromDB(productIds);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Archived products permanently deleted successfully.',
-    data: result,
-  });
-});
-
-const getRecentlyViewedProducts: RequestHandler = catchAsync(async (req, res) => {
-  const service = ProductServices(req.dbConnection!, req.brand!);
-  const { ids } = req.body;
-
-  const result = await service.getRecentlyViewedProductsFromDB(ids);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Recently viewed products retrieved successfully.',
     data: result,
   });
 });
@@ -198,12 +126,7 @@ export const ProductControllers = {
   updateProduct,
   deleteProduct,
   restoreProduct,
-  getPendingProducts,
-  approveProduct,
   toggleStatus,
-  getRelatedProducts,
-
   getArchivedProductsForDashboard,
   deleteProductsPermanently,
-  getRecentlyViewedProducts,
 };

@@ -1,14 +1,10 @@
 import nodemailer from 'nodemailer';
 import { config } from '../config/env';
 
-// Define valid brands
-export type EmailBrand = 'bringByAir' | 'pandaBD';
-
 export const sendEmail = async (
   to: string | string[],
   subject: string,
   html: string,
-  brand: EmailBrand = 'bringByAir', // Default to your main brand
   attachments?: {
     filename: string;
     content: Buffer;
@@ -17,21 +13,18 @@ export const sendEmail = async (
 ) => {
   const toList = Array.isArray(to) ? to.join(',') : to;
 
-  // 1.  DYNAMIC SWITCH: Select credentials based on Brand
-  const emailConfig = config.smtpCredential[brand];
-
-  if (!emailConfig || !emailConfig.user || !emailConfig.pass) {
-    throw new Error(`Missing SMTP credentials for brand: ${brand}`);
+  if (!config.smtpCredential.user || !config.smtpCredential.pass) {
+    console.error('Missing SMTP credentials in environment variables.');
+    return false; // Fail gracefully so it doesn't crash the Order creation
   }
 
-  // 2. Create Transporter with Selected Creds
   const smtpTransporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
     secure: true,
     auth: {
-      user: emailConfig.user, // Dynamic User
-      pass: emailConfig.pass, // Dynamic Pass
+      user: config.smtpCredential.user,
+      pass: config.smtpCredential.pass,
     },
     tls: {
       rejectUnauthorized: false,
@@ -39,24 +32,21 @@ export const sendEmail = async (
   });
 
   try {
-    // 3. Verify connection (Optional, might slow down bulk sending)
-    // await smtpTransporter.verify();
-
-    // 4. Send mail
+    //  Send mail
     const sendResult = await smtpTransporter.sendMail({
-      from: emailConfig.from, // Use the brand's verified email
+      from: `"${config.client.companyName}" <${config.smtpCredential.user}>`,
       to: toList,
       subject,
-      text: html.replace(/<(?:.|\n)*?>/gm, ''),
+      text: html.replace(/<(?:.|\n)*?>/gm, ''), // Strip HTML tags for the plaintext fallback
       html,
-      attachments,
+      attachments, // The PDF buffer
     });
 
-    console.log(`📧 [${brand.toUpperCase()}] Email sent to: ${toList} | MsgID: ${sendResult.messageId}`);
+    console.log(`📧 [IMS] Email sent to: ${toList} | MsgID: ${sendResult.messageId}`);
     return !!sendResult.messageId;
   } catch (err) {
-    console.error(`❌ [${brand.toUpperCase()}] Error sending email to:`, toList);
+    console.error(`❌ [IMS] Error sending email to:`, toList);
     console.error(err);
-    throw err;
+    return false;
   }
 };

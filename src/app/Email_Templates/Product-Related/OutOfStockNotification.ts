@@ -1,7 +1,7 @@
 import { StockNotificationEmailParams } from './product.email.interface';
 
 const OutOfStockNotification = (params: StockNotificationEmailParams) => {
-  const { sku, productTitle, companyName, companyLogoUrl, adminDashboardLink } = params;
+  const { sku, productTitle, companyName, companyLogoUrl, currentQty, clientUrl = '#' } = params;
 
   return `
   <!DOCTYPE html>
@@ -17,8 +17,12 @@ const OutOfStockNotification = (params: StockNotificationEmailParams) => {
         <td align="center">
           <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden; font-family:Arial, sans-serif; border:1px solid #dddddd;">
             <tr>
-              <td style="padding:15px; text-align:center; background-color: #ffffff;">
-                <img src="${companyLogoUrl}" alt="${companyName}" width="140" style="display:block; margin: 0 auto; border:0;" />
+              <td style="padding:20px; text-align:center; background-color: #ffffff;">
+                ${
+                  companyLogoUrl
+                    ? `<img src="${companyLogoUrl}" alt="${companyName} Logo" width="140" style="display:block; margin: 0 auto; border:0;" />`
+                    : `<h2 style="margin: 0; color: #333333;">${companyName}</h2>`
+                }
               </td>
             </tr>
             <tr>
@@ -29,18 +33,18 @@ const OutOfStockNotification = (params: StockNotificationEmailParams) => {
             <tr>
               <td style="padding:0 30px 20px;">
                 <p style="margin:0 0 15px 0; font-size:14px; color:#555555; text-align:center;">
-                  Action Required: The following item has reached <strong>0</strong> quantity.
+                  Action Required: The following item has reached <strong>${currentQty}</strong> quantity.
                 </p>
-                <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px; border-collapse:collapse;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px; border-collapse:collapse; border: 1px solid #dddddd;">
                   <tr style="background-color:#f9f9f9;">
-                    <td style="padding:10px; font-size:14px; color:#333333; width: 40%;"><strong>SKU:</strong></td>
-                    <td style="padding:10px; font-size:14px; color:#333333;">${sku}</td>
+                    <td style="padding:10px; font-size:14px; color:#333333; width: 40%; border-bottom: 1px solid #dddddd;"><strong>SKU:</strong></td>
+                    <td style="padding:10px; font-size:14px; color:#333333; border-bottom: 1px solid #dddddd;">${sku}</td>
                   </tr>
-                  <tr style="border-top:1px solid #dddddd; background-color:#ffffff;">
-                    <td style="padding:10px; font-size:14px; color:#333333;"><strong>Product:</strong></td>
-                    <td style="padding:10px; font-size:14px; color:#333333;">${productTitle}</td>
+                  <tr style="background-color:#ffffff;">
+                    <td style="padding:10px; font-size:14px; color:#333333; border-bottom: 1px solid #dddddd;"><strong>Product:</strong></td>
+                    <td style="padding:10px; font-size:14px; color:#333333; border-bottom: 1px solid #dddddd;">${productTitle}</td>
                   </tr>
-                  <tr style="border-top:1px solid #dddddd; background-color:#fef2f2;">
+                  <tr style="background-color:#fef2f2;">
                     <td style="padding:10px; font-size:14px; color:#333333;"><strong>Status:</strong></td>
                     <td style="padding:10px; font-size:14px; color:#dc2626; font-weight:bold;">OUT OF STOCK</td>
                   </tr>
@@ -48,15 +52,15 @@ const OutOfStockNotification = (params: StockNotificationEmailParams) => {
               </td>
             </tr>
             <tr>
-              <td style="padding:0 30px 20px; text-align:center;">
-                <a href="${adminDashboardLink}" style="display:inline-block; padding:12px 24px; font-size:14px; font-weight:600; color:#ffffff; background-color:#dc2626; border-radius:5px; text-decoration:none;" target="_blank">
-                  Restock Now
+              <td style="padding:0 30px 30px; text-align:center;">
+                <a href="${clientUrl}" style="display:inline-block; padding:12px 24px; font-size:14px; font-weight:600; color:#ffffff; background-color:#dc2626; border-radius:5px; text-decoration:none;" target="_blank">
+                  Go to Dashboard
                 </a>
               </td>
             </tr>
             <tr>
               <td style="padding:20px 30px; text-align:center; font-size:12px; color:#999999; border-top: 1px solid #eeeeee;">
-                ${companyName} Automated Notification.<br />
+                ${companyName} Automated IMS Notification.<br />
                 Please do not reply to this email.
               </td>
             </tr>

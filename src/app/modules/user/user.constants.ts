@@ -1,8 +1,7 @@
 export const USER_ROLE = {
   super_admin: 'super_admin',
   admin: 'admin',
-  customer: 'customer',
-  editor: 'editor',
+  manager: 'manager',
 } as const;
 
 export const USER_STATUS = {

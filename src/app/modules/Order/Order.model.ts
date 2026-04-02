@@ -1,16 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Connection, Model, Query, Schema, Aggregate } from 'mongoose';
-import { IAddress, IOrder, IOrderItem, IOrderTimelineEvent, IPaymentInfo } from './Order.interface';
-import { orderStatusEnum } from './Order.constant';
+import mongoose, { Model, Query, Schema, Aggregate } from 'mongoose';
+import { IOrder, IOrderItem, IOrderTimelineEvent, IPaymentInfo } from './Order.interface';
+import { ORDER_STATUS, PAYMENT_STATUS } from './Order.constant';
 
 export type TOrderModel = Model<IOrder>;
 
 const OrderTimelineSchema = new Schema<IOrderTimelineEvent>(
   {
-    status: { type: String, enum: orderStatusEnum, required: true },
-    title: { type: String, required: true },
-    description: { type: String },
-    location: { type: String },
+    status: { type: String, enum: Object.values(ORDER_STATUS), required: true },
+    title: { type: String, required: true, trim: true },
+    description: { type: String, trim: true },
     timestamp: { type: Date, default: Date.now },
     performedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
@@ -20,123 +19,84 @@ const OrderTimelineSchema = new Schema<IOrderTimelineEvent>(
 const OrderItemSchema = new Schema<IOrderItem>(
   {
     product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
-    groupBuyId: { type: Schema.Types.ObjectId, ref: 'GroupBuy' },
-    isGroupBuyItem: { type: Boolean, default: false },
-    sku: { type: String, required: true },
-    quantity: { type: Number, required: true },
-    priceAtPurchase: { type: Number, required: true },
-    proratedDiscount: { type: Number, default: 0 },
-    netPrice: { type: Number },
-    fulfillmentType: {
-      type: String,
-      enum: ['READY_TO_SHIP', 'CROSS_BORDER'],
-      default: 'READY_TO_SHIP',
-    },
+    variantId: { type: Schema.Types.ObjectId, required: true },
+    sku: { type: String, required: true, trim: true },
+    name: { type: String, required: true, trim: true },
+    quantity: { type: Number, required: true, min: [1, 'Quantity must be at least 1'] },
+    unitPrice: { type: Number, required: true, min: 0 },
+    itemTotal: { type: Number, required: true, min: 0 },
   },
   { _id: false },
 );
 
-const AddressSchema = new Schema<IAddress>(
-  {
-    name: { type: String, required: true },
-    street1: { type: String, required: true },
-    city: { type: String, required: true },
-    state: { type: String },
-    postalCode: { type: String, required: true },
-    country: { type: String, required: true },
-    phone: { type: String, required: true },
-  },
-  { _id: false },
-);
-
+// Payment Ledger Snapshot Schema
 const PaymentInfoSchema = new Schema<IPaymentInfo>(
   {
-    paymentType: {
+    paymentStatus: {
       type: String,
-      enum: ['full', 'partial', 'remaining', 'refunded'],
+      enum: Object.values(PAYMENT_STATUS),
+      default: PAYMENT_STATUS.UNPAID,
     },
-    paidAmount: { type: Number, default: 0 },
-    dueAmount: { type: Number, default: 0 },
-    bookingPercentageAtPurchase: { type: Number, default: 10 },
+    paidAmount: { type: Number, default: 0, min: 0 },
+    dueAmount: { type: Number, default: 0, min: 0 },
   },
   { _id: false },
 );
-
-export const storePreferenceConfig = {
-  type: String,
-  required: true,
-  enum: ['bringByAir', 'pandaBD'],
-  index: true,
-};
 
 const OrderSchema = new Schema<IOrder>(
   {
-    orderNumber: { type: String, required: true, unique: true },
-    storePreference: storePreferenceConfig,
-    user: { type: Schema.Types.ObjectId, ref: 'User' },
-    guestId: { type: String },
-    email: { type: String, required: true },
-    items: { type: [OrderItemSchema], required: true },
+    orderId: { type: String, required: true, unique: true },
 
-    subtotal: { type: Number, required: true },
-    discountAmount: { type: Number, default: 0 },
-    customDiscountAmount: { type: Number, default: 0 },
-    tax: { type: Number, default: 0 },
-    shippingFee: { type: Number, default: 0 },
-    total: { type: Number, required: true },
+    customerName: { type: String, required: true, trim: true },
+    // later on the next update I will update this with automatic suggsetion form our existing db, so that for the next order same customer can be easily selected
+    customerPhone: { type: String, trim: true },
+    customerEmail: { type: String, trim: true },
+    shippingAddress: { type: String, trim: true },
 
-    couponCode: { type: String },
+    items: {
+      type: [OrderItemSchema],
+      required: true,
+      validate: [
+        {
+          validator: function (items: IOrderItem[]) {
+            return items.length > 0;
+          },
+          message: 'An order must contain at least one item.',
+        },
+      ],
+    },
+
+    totalAmount: { type: Number, required: true, min: 0 },
+
     paymentInfo: {
       type: PaymentInfoSchema,
-      default: { paidAmount: 0, dueAmount: 0, bookingPercentageAtPurchase: 10 },
-    },
-
-    billingAddress: { type: AddressSchema },
-    shippingAddress: { type: AddressSchema, required: true },
-    orderNote: { type: String },
-
-    fulfillmentStatus: {
-      type: String,
-      enum: orderStatusEnum,
-      default: 'awaiting-payment',
-    },
-    orderType: {
-      type: String,
-      enum: ['standard', 'pre-order', 'group-buy'],
-      default: 'standard',
       required: true,
+      default: () => ({ paymentStatus: PAYMENT_STATUS.UNPAID, paidAmount: 0, dueAmount: 0 }),
+    },
+
+    status: {
+      type: String,
+      enum: Object.values(ORDER_STATUS),
+      default: ORDER_STATUS.PENDING,
     },
 
     orderHistory: {
       type: [OrderTimelineSchema],
       default: [],
     },
-    cancelToken: { type: String, unique: true, sparse: true },
-    deliveredAt: { type: Date },
-    orderExpireAt: { type: Date },
-    reminderSent: { type: Boolean, default: false },
-    finalReminderSent: { type: Boolean, default: false },
-    abandonedReminderSent: { type: Boolean, default: false },
+
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
 
-OrderSchema.index({ orderNumber: 1, storePreference: 1 }, { unique: true });
-OrderSchema.index({ user: 1, storePreference: 1 });
-
-/**
- * TTL: 10-Minute Cleanup for Orphaned Group Buy Joins
- * Automatically deletes the document if it remains in 'group-buy-pending' for 10 minutes.
- * Calculation: 10 * 60 = 600 seconds.
- */
-OrderSchema.index(
-  { createdAt: 1 },
-  {
-    expireAfterSeconds: 600,
-    partialFilterExpression: { fulfillmentStatus: 'group-buy-pending' },
-  },
-);
+// Performance Indexes optimized for Dashboard Queries
+// OrderSchema.index({ orderId: 1 });
+OrderSchema.index({ status: 1 });
+OrderSchema.index({ 'paymentInfo.paymentStatus': 1 });
+OrderSchema.index({ createdAt: -1 });
 
 /**
  * --- MIDDLEWARE: SOFT DELETE ---
@@ -162,6 +122,4 @@ OrderSchema.pre('aggregate', function (this: Aggregate<IOrder>, next) {
   next();
 });
 
-export const getOrderModel = (connection: Connection): TOrderModel => {
-  return (connection.models.Order as TOrderModel) || connection.model<IOrder>('Order', OrderSchema);
-};
+export const OrderModel = mongoose.model<IOrder, TOrderModel>('Order', OrderSchema);

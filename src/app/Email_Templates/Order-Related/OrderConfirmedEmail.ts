@@ -4,25 +4,18 @@ const OrderConfirmedEmail = (params: OrderConfirmedEmailParams) => {
   const {
     customerName,
     orderNumber,
-    userOrGuestId,
     createdAt,
     items,
-    subtotal,
-    discountAmount,
-    customDiscountAmount,
-    taxAmount,
-    shippingFee,
     total,
-    minAmountToPay, // Calculated booking deposit from service
-    paymentUrl,
-    overrideNoteHtml,
+    paidAmount,
+    dueAmount,
     shippingAddress,
     supportEmail,
     supportPhone,
-    userEmail,
+    customerEmail,
     companyName,
     companyLogoUrl,
-    cancelLink,
+    clientUrl,
     themeColor,
   } = params;
 
@@ -45,10 +38,10 @@ const OrderConfirmedEmail = (params: OrderConfirmedEmailParams) => {
       <tr style="border-bottom: 1px solid #dddddd;">
         <td style="padding: 12px; text-align: left; vertical-align: top;">
           <img
-            src="${item.imageUrl}"
+            src="${item.imageUrl || 'https://via.placeholder.com/60?text=No+Image'}"
             alt="${item.title}"
             width="60"
-            style="display: block; border: 0;"
+            style="display: block; border: 0; border-radius: 4px;"
           />
         </td>
         <td style="padding: 12px; font-size: 14px; color: #333333; text-align: left; vertical-align: top;">
@@ -68,25 +61,13 @@ const OrderConfirmedEmail = (params: OrderConfirmedEmailParams) => {
     })
     .join('');
 
-  // INSTRUCTION LOGIC: Preserves the yellow box design for dynamic sourcing/payment instructions
-  const noteBlockHtml =
-    overrideNoteHtml && overrideNoteHtml.trim()
-      ? `
-      <div style="border: 1px solid #ffcc00; background-color: #fffbea; padding: 15px; border-radius: 4px; margin-bottom: 15px;">
-        <div style="font-size: 15px; color: #333333; line-height: 1.5;">${overrideNoteHtml}</div>
-      </div>
-      `
-      : `<p style="margin: 0 0 15px; font-size: 16px; color: #333333; line-height: 1.5;">
-          Your order has been <strong>reviewed and confirmed</strong>! Please click the button below to complete the payment and start the fulfillment process.
-         </p>`;
-
   return `
   <!DOCTYPE html>
   <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Order Confirmed - ${companyName}</title>
+    <title>Order Receipt - ${companyName}</title>
   </head>
   <body style="margin: 0; padding: 0; background-color: #f4f4f4;">
     <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px 0;">
@@ -95,7 +76,11 @@ const OrderConfirmedEmail = (params: OrderConfirmedEmailParams) => {
           <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; font-family: Arial, sans-serif; border: 1px solid #dddddd;">
             <tr>
               <td style="padding: 20px; text-align: center;">
-                <img src="${companyLogoUrl}" alt="${companyName} Logo" width="160" style="display: block; border: 0;" />
+                ${
+                  companyLogoUrl
+                    ? `<img src="${companyLogoUrl}" alt="${companyName} Logo" width="160" style="display: block; border: 0; margin: 0 auto;" />`
+                    : `<h2 style="margin: 0; color: #333333;">${companyName}</h2>`
+                }
               </td>
             </tr>
 
@@ -103,7 +88,7 @@ const OrderConfirmedEmail = (params: OrderConfirmedEmailParams) => {
               <td style="padding: 30px 30px 20px;">
                 <h2 style="margin: 0 0 10px; font-size: 22px; color: #333333;">Hello ${customerName},</h2>
                 <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #555555;">
-                  Great news! Your order is ready. Below are the finalized details. To proceed with the order, please complete your payment.
+                  This is a digital receipt for your recent order with <strong>${companyName}</strong>. Please review the details below.
                 </p>
               </td>
             </tr>
@@ -121,10 +106,6 @@ const OrderConfirmedEmail = (params: OrderConfirmedEmailParams) => {
                       <td style="padding: 10px; font-size: 14px; color: #333333; width: 40%;"><strong>Order Number:</strong></td>
                       <td style="padding: 10px; font-size: 14px; color: #333333;">${orderNumber}</td>
                     </tr>
-                    <tr style="border-bottom: 1px solid #dddddd;">
-                      <td style="padding: 10px; font-size: 14px; color: #333333;"><strong>Customer ID:</strong></td>
-                      <td style="padding: 10px; font-size: 14px; color: #333333;">${userOrGuestId}</td>
-                    </tr>
                     <tr>
                       <td style="padding: 10px; font-size: 14px; color: #333333;"><strong>Confirmation Date:</strong></td>
                       <td style="padding: 10px; font-size: 14px; color: #333333;">${orderDate}</td>
@@ -139,10 +120,10 @@ const OrderConfirmedEmail = (params: OrderConfirmedEmailParams) => {
                 <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; border: 1px solid #dddddd; margin-bottom: 20px;">
                   <thead>
                     <tr style="background-color: #f9f9f9;">
-                      <th width="15%" style="padding: 12px; text-align: left; font-size: 14px; color: #333333; border-bottom: 1px solid #dddddd;">Product</th>
-                      <th width="35%" style="padding: 12px; text-align: left; font-size: 14px; color: #333333; border-bottom: 1px solid #dddddd;">Name & SKU</th>
+                      <th width="15%" style="padding: 12px; text-align: left; font-size: 14px; color: #333333; border-bottom: 1px solid #dddddd;">Item</th>
+                      <th width="35%" style="padding: 12px; text-align: left; font-size: 14px; color: #333333; border-bottom: 1px solid #dddddd;">Details</th>
                       <th width="10%" style="padding: 12px; text-align: center; font-size: 14px; color: #333333; border-bottom: 1px solid #dddddd;">Qty</th>
-                      <th width="20%" style="padding: 12px; text-align: right; font-size: 14px; color: #333333; border-bottom: 1px solid #dddddd;">Price</th>
+                      <th width="20%" style="padding: 12px; text-align: right; font-size: 14px; color: #333333; border-bottom: 1px solid #dddddd;">Unit Price</th>
                       <th width="20%" style="padding: 12px; text-align: right; font-size: 14px; color: #333333; border-bottom: 1px solid #dddddd;">Total</th>
                     </tr>
                   </thead>
@@ -154,52 +135,16 @@ const OrderConfirmedEmail = (params: OrderConfirmedEmailParams) => {
                       <td colspan="5" style="padding: 10px 0;">
                         <table align="right" border="0" cellpadding="0" cellspacing="0" style="width: auto; margin-right: 12px;">
                           <tr>
-                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #333333; font-weight: bold;">Subtotal:</td>
-                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #333333; width: 130px;">${formatCurrency(subtotal)}</td>
+                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #333333; font-weight: bold;">Grand Total:</td>
+                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #333333; width: 130px;"><strong>${formatCurrency(total)}</strong></td>
                           </tr>
-                          ${
-                            discountAmount > 0
-                              ? `
                           <tr>
-                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #333333; font-weight: bold;">Coupon Discount:</td>
-                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #d9534f; width: 130px;">−${formatCurrency(discountAmount)}</td>
-                          </tr>`
-                              : ''
-                          }
-                          ${
-                            customDiscountAmount > 0
-                              ? `
-                          <tr>
-                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #333333; font-weight: bold;">Admin Adjustment:</td>
-                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #d9534f; width: 130px;">−${formatCurrency(customDiscountAmount)}</td>
-                          </tr>`
-                              : ''
-                          }
-                          ${
-                            taxAmount > 0
-                              ? `
-                          <tr>
-                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #333333; font-weight: bold;">Estimated Tax:</td>
-                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #333333; width: 130px;">${formatCurrency(taxAmount)}</td>
-                          </tr>`
-                              : ''
-                          }
-                          ${
-                            shippingFee > 0
-                              ? `
-                          <tr>
-                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #333333; font-weight: bold;">Shipping:</td>
-                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #333333; width: 130px;">${formatCurrency(shippingFee)}</td>
-                          </tr>`
-                              : ''
-                          }
-                          <tr style="border-top: 1px solid #eee;">
-                             <td style="padding: 8px 5px 5px; text-align: right; font-size: 14px; color: #333333; font-weight: bold;">Grand Total:</td>
-                             <td style="padding: 8px 5px 5px; text-align: right; font-size: 14px; color: #333333; width: 130px;"><strong>${formatCurrency(total)}</strong></td>
+                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #16a34a; font-weight: bold;">Amount Paid:</td>
+                            <td style="padding: 5px; text-align: right; font-size: 14px; color: #16a34a; width: 130px;">${formatCurrency(paidAmount)}</td>
                           </tr>
-                          <tr style="background-color: #fff8f8;">
-                             <td style="padding: 10px 5px; text-align: right; font-size: 16px; color: #d9534f; font-weight: bold;">Payable Now (Deposit):</td>
-                             <td style="padding: 10px 5px; text-align: right; font-size: 16px; color: #d9534f; width: 130px; border: 1px dashed #d9534f;"><strong>${formatCurrency(minAmountToPay)}</strong></td>
+                          <tr style="background-color: ${dueAmount > 0 ? '#fff8f8' : '#f0fdf4'};">
+                            <td style="padding: 10px 5px; text-align: right; font-size: 16px; color: ${dueAmount > 0 ? '#d9534f' : '#16a34a'}; font-weight: bold;">Balance Due:</td>
+                            <td style="padding: 10px 5px; text-align: right; font-size: 16px; color: ${dueAmount > 0 ? '#d9534f' : '#16a34a'}; width: 130px; border: 1px dashed ${dueAmount > 0 ? '#d9534f' : '#16a34a'};"><strong>${formatCurrency(dueAmount)}</strong></td>
                           </tr>
                         </table>
                       </td>
@@ -208,26 +153,14 @@ const OrderConfirmedEmail = (params: OrderConfirmedEmailParams) => {
                 </table>
               </td>
             </tr>
-            
-            <tr>
-              <td style="padding: 0 30px 20px;">
-                ${noteBlockHtml}
-              </td>
-            </tr>
 
             <tr>
               <td style="padding: 0 30px 30px; text-align: center;">
                 <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
                   <tr>
                     <td align="center" bgcolor="${buttonColor}" style="border-radius: 5px;">
-                      <a href="${paymentUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
-                        Pay To Start Processing
-                      </a>
-                    </td>
-                    <td width="15"></td>
-                    <td align="center" bgcolor="#DC2626" style="border-radius: 5px;">
-                      <a href="${cancelLink}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
-                        Cancel Order
+                      <a href="${clientUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                        Visit Our Portal
                       </a>
                     </td>
                   </tr>
@@ -246,11 +179,7 @@ const OrderConfirmedEmail = (params: OrderConfirmedEmailParams) => {
                   <tbody>
                     <tr>
                       <td style="padding: 12px; font-size: 14px; color: #555555; line-height: 1.6;">
-                        <strong>${shippingAddress.name}</strong><br/>
-                        ${shippingAddress.street1}<br/>
-                        ${shippingAddress.city}, ${shippingAddress.postalCode}<br/>
-                        ${shippingAddress.country}<br/>
-                        Phone: ${shippingAddress.phone}
+                        ${shippingAddress && shippingAddress !== 'N/A' ? shippingAddress.replace(/\n/g, '<br/>') : 'No shipping address provided.'}
                       </td>
                     </tr>
                   </tbody>
@@ -275,12 +204,13 @@ const OrderConfirmedEmail = (params: OrderConfirmedEmailParams) => {
             <tr>
               <td style="padding: 20px 30px; text-align: center; background-color: #f9f9f9; border-top: 1px solid #dddddd;">
                  <div style="margin-bottom: 16px;">
-                    <a href="#" style="margin: 0 8px;"><img src="https://res.cloudinary.com/dydv6uxzo/image/upload/v1753341562/ReLoved_Gadget/Assets/icons/facebook_mzvjbm.png" alt="Facebook" style="width: 30px; height: 30px;" /></a>
-                    <a href="#" style="margin: 0 8px;"><img src="https://i.ibb.co/cJbSJ2K/twitter.png" alt="Twitter" style="width: 30px; height: 30px;" /></a>
-                    <a href="#" style="margin: 0 8px;"><img src="https://i.ibb.co/P60Jbqy/insta.png" alt="Instagram" style="width: 30px; height: 30px;" /></a>
-                    <a href="https://wa.me/${whatsAppNumber}" target="_blank" style="margin: 0 8px;"><img src="https://res.cloudinary.com/dydv6uxzo/image/upload/v1753341562/ReLoved_Gadget/Assets/icons/whatsapp-icon_fml5kj.png" alt="WhatsApp" style="width: 30px; height: 30px;" /></a>
+                    ${
+                      whatsAppNumber
+                        ? `<a href="https://wa.me/${whatsAppNumber}" target="_blank" style="margin: 0 8px;"><img src="https://res.cloudinary.com/dydv6uxzo/image/upload/v1753341562/ReLoved_Gadget/Assets/icons/whatsapp-icon_fml5kj.png" alt="WhatsApp" style="width: 30px; height: 30px;" /></a>`
+                        : ''
+                    }
                  </div>
-                <p style="font-size: 12px; color: #6b7280; margin: 0 0 4px;">This automated email was sent to <a href="mailto:${userEmail}" style="color: #2a7ae2; text-decoration: none;">${userEmail}</a>.</p>
+                <p style="font-size: 12px; color: #6b7280; margin: 0 0 4px;">This automated email was sent to <a href="mailto:${customerEmail}" style="color: #2a7ae2; text-decoration: none;">${customerEmail}</a>.</p>
                 <p style="font-size: 12px; color: #6b7280; margin: 0;">&copy; ${new Date().getFullYear()} ${companyName}. All Rights Reserved.</p>
               </td>
             </tr>

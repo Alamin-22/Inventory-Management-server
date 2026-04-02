@@ -1,11 +1,9 @@
 import { Types } from 'mongoose';
-import { TCurrency, TProductFulfillmentType, TProductSourceType, TProductStatus } from './product.constants';
-import { TBrand } from '../auth/auth.interface';
+import { TProductStatus } from './product.constants';
 
-// (e.g. "Color", "Size") actually this is the key(Options Name)
 export interface IProductOption {
-  name: string; // option name like Color
-  values: string[]; /// multiple values under a single option like red,green,blue etc
+  name: string;
+  values: string[];
 }
 
 export interface IProductImage {
@@ -15,32 +13,22 @@ export interface IProductImage {
 
 export interface I_inventory {
   stock: number;
+  minStockThreshold: number;
   preOrderLimit: number;
   preOrdersSold: number;
 }
 
 export interface IProductVariant {
+  _id?: Types.ObjectId;
   name: string;
   sku: string;
   selectedOptions: Record<string, string>;
 
-  // Pricing (variant-only)
   priceBDT: number;
   oldPriceBDT?: number;
   discountPercentage?: number;
 
-  // Cross-border core
-  fulfillmentType: TProductFulfillmentType;
-  launchDate?: Date | null;
-  deliveryEstimate?: string; // required for CROSS_BORDER (business rule)
-
-  // External/source price
-  sourcePrice?: number;
-  sourceCurrency?: TCurrency;
-
-  // Inventory (READY_TO_SHIP only)
   inventory: I_inventory;
-
   image?: IProductImage;
 }
 
@@ -54,12 +42,9 @@ export interface IProduct {
   _id: Types.ObjectId;
   title: string;
   slug: string;
-  storePreference: TBrand;
   category: Types.ObjectId;
 
-  // Brand hybrid system
-  brandForExternal?: string; // external string (for scraper/api)
-  verifiedBrandId?: Types.ObjectId | null; // required for MANUAL inventory products
+  brand?: Types.ObjectId | null;
 
   description?: string;
   videoReviewUrl?: string;
@@ -67,40 +52,21 @@ export interface IProduct {
   images: IProductImage[];
   specifications?: Record<string, string>;
 
-  // The Menu: "This product comes in Color and Size"
   options: IProductOption[];
   variants: IProductVariant[];
 
-  // Workflow
-  sourceType: TProductSourceType;
-  sourceUrl?: string;
-  sourceProductId?: string;
-  requiresAdminVerification: boolean;
   adminNotes?: string;
+  tags?: string[]; // for internal use like searching optimization
 
-  // Marketing
-  badges?: Types.ObjectId[];
-  frequentlyBoughtTogether?: Types.ObjectId[];
-  tags?: string[];
-
-  // Status
   status: TProductStatus;
   isPublished: boolean;
   isDeleted: boolean;
 
-  searchHitCount?: number;
-
-  // SEO
-  seo?: IProductSEO;
-
-  // Fast reads for listing
   defaultImage?: string;
   defaultPriceBDT?: number;
   defaultVariantSku?: string;
-  bookingConfiguration: {
-    allowPartialPayment: boolean; // Toggle for "Options A & B" vs "Option B Only"
-    bookingFeePercentage: number; // The dynamic % (1% - 50%)
-  };
+
+  seo?: IProductSEO;
 
   createdAt?: Date;
   updatedAt?: Date;

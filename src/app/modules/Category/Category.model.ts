@@ -1,26 +1,29 @@
-import { Connection, Schema } from 'mongoose';
-import { ICategory, ICategoryModel } from './Category.interface';
+import mongoose, { Schema, Query, Document } from 'mongoose';
+import { ICategory, TCategoryModel } from './Category.interface';
+import { slugGenerator } from '@utils/slugGenerator';
 
-const categorySchema = new Schema<ICategory>(
+const categorySchema = new Schema<ICategory, TCategoryModel>(
   {
-    name: { type: String, required: true, unique: true },
-    slug: { type: String, required: true, unique: true },
+    name: { type: String, required: true, unique: true, trim: true },
+    slug: { type: String, unique: true },
     description: { type: String },
-    seoTitle: { type: String },
-    seoDescription: { type: String },
     parentCategory: { type: Schema.Types.ObjectId, ref: 'Category' },
-    categoryImage: { url: { type: String }, publicId: { type: String } },
-    order: { type: Number, default: 0, indexes: true }, // Lower numbers show first| used for drag & drop feature
-    isFeatured: { type: Boolean, default: false, index: true },
+    order: { type: Number, default: 0, index: true },
+    isDeleted: { type: Boolean, default: false },
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true },
 );
 
-export const getCategoryModel = (connection: Connection): ICategoryModel => {
-  if (connection.models.Category) {
-    return connection.models.Category as ICategoryModel;
+categorySchema.pre('save', function (next) {
+  if (this.isModified('name')) {
+    this.slug = slugGenerator(this.name);
   }
-  return connection.model<ICategory, ICategoryModel>('Category', categorySchema);
-};
+  next();
+});
+
+categorySchema.pre(/^find/, function (this: Query<ICategory, Document>, next) {
+  this.find({ isDeleted: { $ne: true } });
+  next();
+});
+
+export const Category = mongoose.model<ICategory, TCategoryModel>('Category', categorySchema);

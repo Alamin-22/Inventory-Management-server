@@ -2,8 +2,8 @@
   "compilerOptions": {
     /* Base Configuration */
     "target": "ES2020",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "node16",
+    "moduleResolution": "node16",
     "lib": ["ES2020", "DOM"],
 
     /* Strictness & Checks */
@@ -14,13 +14,11 @@
     "noUnusedParameters": true, //  Error if you define a function param but don't use it
 
     /* Module & Path Handling */
-    "baseUrl": ".",
     "paths": {
-      "@app/*": ["src/app/*"], // explicit 'src/' prefix is safer
-      "@config/*": ["src/config/*"],
-      "@shared/*": ["src/shared/*"],
-      "@utils/*": ["src/utils/*"],
-      "*": ["node_modules/*"] // Fallback to node_modules
+      "@app/*": ["./src/app/*"],
+      "@config/*": ["./src/config/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@utils/*": ["./src/utils/*"]
     },
 
     "allowJs": true,

@@ -1,4 +1,4 @@
-import { Schema, Connection, Model } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 
 interface ICounter {
   _id: string; // e.g., 'customer_id', 'admin_id'
@@ -10,9 +10,4 @@ const counterSchema = new Schema<ICounter>({
   seq: { type: Number, default: 0 },
 });
 
-export const getCounterModel = (connection: Connection) => {
-  if (connection.models.Counter) {
-    return connection.models.Counter as Model<ICounter>;
-  }
-  return connection.model<ICounter>('Counter', counterSchema);
-};
+export const Counter = mongoose.model<ICounter>('Counter', counterSchema);

@@ -1,23 +1,25 @@
 import { Model, Types } from 'mongoose';
-import { TAdminPermission } from './admin.constants';
+import { TAdminPermission } from './admin.constant';
 
 export interface IAdmin {
   _id: Types.ObjectId;
-  id: string; // User ID (A-00001)
-  user: Types.ObjectId; // refers to user model
+  id: string; // Custom ID (e.g., A-00001)
+  user: Types.ObjectId; // Reference to Auth User
 
   name: string;
   email: string;
   contactNo: string;
+
   profileImg?: {
     url: string;
     publicId: string;
   };
 
-  storePreference: 'bringByAir' | 'pandaBD';
-
   permissions: TAdminPermission[];
+
   isDeleted: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface TAdminModel extends Model<IAdmin> {

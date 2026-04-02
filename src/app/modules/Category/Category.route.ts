@@ -1,60 +1,56 @@
-import express, { NextFunction, Request, Response } from 'express';
+import express from 'express';
 import { CategoryControllers } from './Category.controller';
-import { categoryValidationSchemas } from './Category.validation';
-import { upload } from '@utils/sendMediaToCloudinary';
+import { CategoryValidation } from './Category.validation';
 import ValidateRequestMiddleWare from '@app/middlewares/ValidateRequestMiddleWare';
 import AuthValidationMiddleWare from '@app/middlewares/AuthValidationMiddleWare';
+import CheckAuthPermissionMiddleware from '@app/middlewares/CheckAuthPermissionMiddleware';
 import { USER_ROLE } from '@app/modules/user/user.constants';
-import { fileCleanupOnFinish } from '@app/middlewares/fileCleanupOnFinish';
+import { AdminPermissions } from '@app/modules/admin/admin.constant';
 
 const router = express.Router();
 
-// api/v1/category/create => to create category
+// Staff Roles mapping
+const STAFF = [USER_ROLE.super_admin, USER_ROLE.admin, USER_ROLE.manager];
+
+// Create (Requires Inventory Permission)
 router.post(
-  '/create',
-  upload.single('file'),
-  fileCleanupOnFinish,
-  // function to handle image upload
-  (req: Request, _res: Response, next: NextFunction) => {
-    req.body = JSON.parse(req.body.data);
-    next();
-  },
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ValidateRequestMiddleWare(categoryValidationSchemas.createCategoryZodSchema),
+  '/',
+  AuthValidationMiddleWare(...STAFF),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
+  ValidateRequestMiddleWare(CategoryValidation.createCategoryZodSchema),
   CategoryControllers.createCategory,
 );
 
+// Read All (Open to all authenticated staff)
+router.get('/', AuthValidationMiddleWare(...STAFF), CategoryControllers.getAllCategories);
+
+// Read Single (Open to all authenticated staff)
+router.get('/:id', AuthValidationMiddleWare(...STAFF), CategoryControllers.getSingleCategory);
+
+// Reorder (Requires Inventory Permission)
 router.patch(
   '/reorder',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ValidateRequestMiddleWare(categoryValidationSchemas.reorderCategoryZodSchema),
+  AuthValidationMiddleWare(...STAFF),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
+  ValidateRequestMiddleWare(CategoryValidation.reorderCategoryZodSchema),
   CategoryControllers.reOrderCategories,
 );
 
-// api/vi/categories to get all categories
-router.get('/', CategoryControllers.getAllCategories);
-
-// to delete category
-router.delete(
-  '/delete/:id',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  CategoryControllers.deleteCategory,
-);
-
-router.get('/:id', CategoryControllers.getSingleCategory);
-
-// update
+// Update (Requires Inventory Permission)
 router.patch(
   '/:id',
-  upload.single('file'),
-  fileCleanupOnFinish,
-  (req: Request, _res: Response, next: NextFunction) => {
-    req.body = JSON.parse(req.body.data);
-    next();
-  },
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
-  ValidateRequestMiddleWare(categoryValidationSchemas.updateCategoryZodSchema),
+  AuthValidationMiddleWare(...STAFF),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
+  ValidateRequestMiddleWare(CategoryValidation.updateCategoryZodSchema),
   CategoryControllers.updateCategory,
+);
+
+// Delete (Requires Admin/Super Admin AND Inventory Permission)
+router.delete(
+  '/:id',
+  AuthValidationMiddleWare(USER_ROLE.super_admin, USER_ROLE.admin),
+  CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
+  CategoryControllers.deleteCategory,
 );
 
 export const CategoryRoutes = router;

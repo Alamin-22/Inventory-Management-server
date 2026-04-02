@@ -1,32 +1,35 @@
 import { Model, Types } from 'mongoose';
+import { CUSTOMER_TYPES } from './customer.constant';
+
+export type TCustomerType = (typeof CUSTOMER_TYPES)[number];
 
 export interface ICustomerAddress {
-  address?: string;
-  country?: string;
+  street?: string;
   city?: string;
   state?: string;
   zipCode?: string;
+  country?: string;
 }
 
 export interface ICustomer {
   _id: Types.ObjectId;
-  id: string; // Copy of User ID (C-00001)
-  user: Types.ObjectId; // Reference to Auth User
+  id: string; // e.g., CUST-00001
 
   name: string;
-  email: string;
   contactNo: string;
-  profileImg?: {
-    url: string;
-    publicId: string;
-  };
+  email?: string; // Optional for walk-ins
 
-  storePreference: 'bringByAir' | 'pandaBD';
+  customerType: TCustomerType;
+  companyName?: string;
+  taxId?: string;
 
   billingAddress?: ICustomerAddress;
   shippingAddress?: ICustomerAddress;
 
+  totalOrders: number;
   isDeleted: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface TCustomerModel extends Model<ICustomer> {

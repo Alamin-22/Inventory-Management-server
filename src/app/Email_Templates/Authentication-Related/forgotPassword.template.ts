@@ -1,22 +1,15 @@
-type BrandType = 'bringByAir' | 'pandaBD';
-
-const brandAssets = {
-  bringByAir: {
-    name: 'Bring By Air',
-    logo: 'https://res.cloudinary.com/dydv6uxzo/image/upload/v1743084355/bring-by-air/logo/logo-color_kfym5f_tu8v1c.png',
-    color: '#2563eb',
-    supportUrl: 'https://bringbyair.com/support',
-  },
-  pandaBD: {
-    name: 'PandaBD',
-    logo: 'https://res.cloudinary.com/dydv6uxzo/image/upload/v1743084355/bring-by-air/logo/logo-color_kfym5f_tu8v1c.png',
-    color: '#e11d48',
-    supportUrl: 'https://pandabd.com/support',
-  },
-};
-
-const ForgotPasswordTemplate = (name: string, email: string, reset_link: string, brand: BrandType): string => {
-  const assets = brandAssets[brand];
+const ForgotPasswordTemplate = (
+  name: string,
+  email: string,
+  reset_link: string,
+  systemName: string = 'Inventory System',
+): string => {
+  // Generic professional assets for the IMS
+  const assets = {
+    name: systemName,
+    logo: 'https://cdn-icons-png.flaticon.com/512/2830/2830312.png',
+    color: '#2563eb', // Professional Blue
+  };
 
   return `
     <!DOCTYPE html>
@@ -31,24 +24,25 @@ const ForgotPasswordTemplate = (name: string, email: string, reset_link: string,
           style="max-width:600px; background-color:#ffffff; margin:20px auto; padding:10px; font-family: Arial, sans-serif; box-sizing:border-box; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
           
           <tr>
-            <td align="left" style="padding: 20px 0; border-bottom: 1px solid #eeeeee;">
+            <td align="center" style="padding: 20px 0; border-bottom: 1px solid #eeeeee;">
               <a href="#">
-                <img src="${assets.logo}" alt="${assets.name}" style="display:block; width: 120px; height:auto;" />
+                <img src="${assets.logo}" alt="${assets.name}" style="display:block; width: 64px; height:auto;" />
               </a>
+              <h1 style="margin: 10px 0 0 0; font-size: 20px; color: #333;">${assets.name}</h1>
             </td>
           </tr>
 
           <tr>
             <td style="padding: 30px 20px;">
-              <h2 style="margin:0 0 10px; font-size:24px; color:#333333;">Hi ${name},</h2>
+              <h2 style="margin:0 0 10px; font-size:20px; color:#333333;">Security Alert: Password Reset</h2>
               
               <p style="margin:0 0 15px; font-size:16px; line-height:1.6; color:#555555;">
-                We received a request to reset the password for your <strong>${assets.name}</strong> account.
+                Hello ${name},
               </p>
               
               <p style="margin:0 0 25px; font-size:16px; line-height:1.6; color:#555555;">
-                To reset your password, please click the button below. This link is valid for <strong>10 minutes</strong>. 
-                If you did not request this, please ignore this email.
+                We received a request to reset the password for your staff account. 
+                To securely reset your password, please click the button below. This link will expire in <strong>10 minutes</strong>. 
               </p>
     
               <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto 25px;">
@@ -70,8 +64,7 @@ const ForgotPasswordTemplate = (name: string, email: string, reset_link: string,
               </p>
   
               <p style="margin:30px 0 0; font-size:16px; line-height:1.5; color:#555555;">
-                Thanks, <br />
-                The ${assets.name} Team
+                If you did not request this reset, please notify your system administrator immediately.
               </p>
             </td>
           </tr>
@@ -79,10 +72,10 @@ const ForgotPasswordTemplate = (name: string, email: string, reset_link: string,
           <tr>
             <td style="padding:20px; background-color: #f9f9f9; text-align:center; font-size:12px; color:#999999; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
               <p style="margin:0;">
-                This email was sent to <a href="mailto:${email}" style="color:${assets.color}; text-decoration:none;">${email}</a>.
+                This secure email was sent to <a href="mailto:${email}" style="color:${assets.color}; text-decoration:none;">${email}</a>.
               </p>
               <p style="margin:5px 0 0;">
-                © ${new Date().getFullYear()} ${assets.name} LTD. All Rights Reserved.
+                © ${new Date().getFullYear()} ${assets.name}. All Rights Reserved.
               </p>
             </td>
           </tr>

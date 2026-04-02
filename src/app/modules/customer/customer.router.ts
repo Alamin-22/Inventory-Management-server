@@ -7,17 +7,22 @@ import ValidateRequestMiddleWare from '@app/middlewares/ValidateRequestMiddleWar
 
 const router = express.Router();
 
-router.get('/', AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin), CustomerControllers.getAllCustomers);
+const STAFF_ROLES = [USER_ROLE.admin, USER_ROLE.super_admin, USER_ROLE.manager];
 
-router.get(
-  '/:id',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin, USER_ROLE.customer),
-  CustomerControllers.getSingleCustomer,
+router.post(
+  '/',
+  AuthValidationMiddleWare(...STAFF_ROLES),
+  ValidateRequestMiddleWare(CustomerValidation.createCustomerZodSchema),
+  CustomerControllers.createCustomer,
 );
+
+router.get('/', AuthValidationMiddleWare(...STAFF_ROLES), CustomerControllers.getAllCustomers);
+
+router.get('/:id', AuthValidationMiddleWare(...STAFF_ROLES), CustomerControllers.getSingleCustomer);
 
 router.patch(
   '/:id',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin, USER_ROLE.customer),
+  AuthValidationMiddleWare(...STAFF_ROLES),
   ValidateRequestMiddleWare(CustomerValidation.updateCustomerZodSchema),
   CustomerControllers.updateCustomer,
 );
