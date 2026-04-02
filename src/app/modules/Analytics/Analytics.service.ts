@@ -121,12 +121,21 @@ const getDashboardSummary = async (year?: number, month?: number): Promise<IDash
 const getRestockQueue = async (): Promise<IRestockItem[]> => {
   return (await ProductModel.aggregate([
     { $match: { isDeleted: false, isPublished: true } },
+
     { $unwind: '$variants' },
-    { $match: { $expr: { $lte: ['$variants.inventory.stock', '$variants.inventory.minStockThreshold'] } } },
+
+    {
+      $match: {
+        $expr: { $lte: ['$variants.inventory.stock', '$variants.inventory.minStockThreshold'] },
+      },
+    },
+
     { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
     { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
+
     {
       $project: {
+        _id: 0,
         productId: '$_id',
         productTitle: '$title',
         variantName: '$variants.name',
@@ -134,8 +143,22 @@ const getRestockQueue = async (): Promise<IRestockItem[]> => {
         currentStock: '$variants.inventory.stock',
         threshold: '$variants.inventory.minStockThreshold',
         category: '$cat.name',
+        // Priority Logic:
+        // - 0 Stock = High
+        // - 1-5 Stock = Medium
+        // - Above 5 (but below threshold) = Low
+        priority: {
+          $cond: [
+            { $eq: ['$variants.inventory.stock', 0] },
+            'High',
+            {
+              $cond: [{ $lte: ['$variants.inventory.stock', 5] }, 'Medium', 'Low'],
+            },
+          ],
+        },
       },
     },
+
     { $sort: { currentStock: 1 } },
   ])) as IRestockItem[];
 };

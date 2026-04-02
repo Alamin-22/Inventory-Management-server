@@ -33,6 +33,7 @@ export interface IRestockItem {
   currentStock: number;
   threshold: number;
   category: string;
+  priority: 'High' | 'Medium' | 'Low';
 }
 
 export interface ICategoryRevenue {
