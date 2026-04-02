@@ -143,7 +143,7 @@ const confirmOrderByAdmin = async (payload: {
   }
 
   const baseTotal = order.items.reduce((sum, item) => sum + item.itemTotal, 0);
-  order.totalAmount = baseTotal + shippingFee - discount;
+  order.totalAmount = Math.max(0, baseTotal + shippingFee - discount);
 
   order.paymentInfo.dueAmount = order.totalAmount - order.paymentInfo.paidAmount;
   if (order.paymentInfo.dueAmount <= 0) {
@@ -172,7 +172,7 @@ const confirmOrderByAdmin = async (payload: {
   return order;
 };
 
-// --- 3. UPDATE STATUS & RESTOCK LOGIC ---
+// ---  UPDATE STATUS & RESTOCK LOGIC ---
 const updateOrderStatusByAdmin = async (
   orderId: string,
   newStatus: OrderStatus,
@@ -268,6 +268,13 @@ const getSingleOrderFromDB = async (orderId: string) => {
 const deleteOrderByAdmin = async (orderId: string) => {
   const order = await OrderModel.findOne({ orderId, isDeleted: false });
   if (!order) throw new AppError(`Order ${orderId} not found.`, httpStatus.NOT_FOUND);
+
+  if (order.status !== ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.DELIVERED) {
+    throw new AppError(
+      `Cannot archive a ${order.status} order. Please cancel the order first to return stock to inventory.`,
+      httpStatus.BAD_REQUEST,
+    );
+  }
 
   order.isDeleted = true;
   return await order.save();

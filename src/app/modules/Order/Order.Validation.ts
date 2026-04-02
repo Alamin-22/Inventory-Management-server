@@ -1,43 +1,41 @@
 import { z } from 'zod';
+import { ORDER_STATUS } from './Order.constant';
 
-const AddressSchema = z.object({
-  name: z.string(),
-  street1: z.string(),
-  street2: z.string().optional(),
-  city: z.string(),
-  state: z.string().optional(),
-  postalCode: z.string(),
-  country: z.string(),
-  phone: z.string().optional(),
+const OrderItemSchema = z.object({
+  product: z.string({ error: 'Product ID is required' }),
+  variantId: z.string({ error: 'Variant ID is required' }),
+  quantity: z.number().min(1, 'Quantity must be at least 1').default(1),
 });
 
 const CreateOrderSchema = z.object({
   body: z.object({
-    billingAddress: AddressSchema.optional(),
-    shippingAddress: AddressSchema,
-    email: z.string().email().optional(),
-    orderNote: z.string().optional(),
+    customerName: z.string().optional(),
+    customerPhone: z.string().optional(),
+    customerEmail: z.string().email().optional(),
+    shippingAddress: z.string().optional(), // Simplified strictly to a single string
+    items: z.array(OrderItemSchema).min(1, 'Order must contain at least one item.'),
+    paymentInfo: z
+      .object({
+        paidAmount: z.number().min(0).optional(),
+      })
+      .optional(),
+    status: z.enum(Object.values(ORDER_STATUS) as [string, ...string[]]).optional(),
   }),
 });
 
 const ConfirmOrderSchema = z.object({
   body: z.object({
-    tax: z.number(),
-    shippingFee: z.number(),
-    orderNumber: z.string(),
-    overrideNoteHtml: z.string().optional(),
+    orderId: z.string({ error: 'Order ID is required' }),
+    shippingFee: z.number().min(0).optional(),
+    discount: z.number().min(0).optional(),
   }),
 });
 
 const updateOrderStatusSchema = z.object({
   body: z.object({
-    newStatus: z.enum([...orderStatusEnum] as [string, ...string[]]),
-  }),
-});
-
-const sendPaymentReminderSchema = z.object({
-  body: z.object({
-    orderNumber: z.string(),
+    newStatus: z.enum(Object.values(ORDER_STATUS) as [string, ...string[]]),
+    notes: z.string().optional(),
+    notifyCustomer: z.boolean().optional(),
   }),
 });
 
@@ -46,28 +44,10 @@ const deleteMultipleArchivedOrdersSchema = z.object({
     order_ids: z.array(z.string()),
   }),
 });
-const sendReminderToAbandonedSchema = z.object({
-  body: z.object({
-    orderNumbers: z.array(z.string()),
-  }),
-});
-
-const joinGroupBuyCampaignSchema = z.object({
-  body: z.object({
-    campaignId: z.string({ error: 'Campaign ID is required' }),
-    gateway: z.enum(['amarpay', 'stripe'], { error: 'Please select a valid gateway' }),
-    shippingAddress: AddressSchema,
-    email: z.string().email('A valid email is required'),
-    quantity: z.number().min(1).default(1).optional(),
-  }),
-});
 
 export const OrderValidationSchemas = {
   CreateOrderSchema,
   ConfirmOrderSchema,
   updateOrderStatusSchema,
-  sendPaymentReminderSchema,
   deleteMultipleArchivedOrdersSchema,
-  sendReminderToAbandonedSchema,
-  joinGroupBuyCampaignSchema,
 };

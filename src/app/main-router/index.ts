@@ -6,6 +6,7 @@ import { AdminRoutes } from '@app/modules/admin/admin.route';
 import { auditLogger } from '@app/middlewares/AuditLogger';
 import { CategoryRoutes } from '@app/modules/Category/Category.route';
 import { ProductRoutes } from '@app/modules/products/product.router';
+import { OrderRoutes } from '@app/modules/Order/Order.route';
 
 const router = Router();
 
@@ -19,7 +20,7 @@ const moduleRoutes = [
   // Inventory Management Core
   { path: '/categories', route: CategoryRoutes },
   { path: '/products', route: ProductRoutes },
-  // { path: '/orders', route: OrderRoutes },
+  { path: '/orders', route: OrderRoutes },
   // { path: '/audit-logs', route: AuditLogRoutes },
 ];
 
