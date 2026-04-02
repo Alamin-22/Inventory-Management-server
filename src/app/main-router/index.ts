@@ -7,6 +7,8 @@ import { CategoryRoutes } from '@app/modules/Category/Category.route';
 import { ProductRoutes } from '@app/modules/products/product.router';
 import { OrderRoutes } from '@app/modules/Order/Order.route';
 import { TransactionRoutes } from '@app/modules/Payment-Related/Transaction/Transaction.route';
+import { AuditLogRoutes } from '@app/modules/AuditLog/AuditLog.route';
+import { auditLogger } from '@app/middlewares/AuditLogger';
 
 const router = Router();
 
@@ -22,7 +24,7 @@ const moduleRoutes = [
   { path: '/products', route: ProductRoutes },
   { path: '/orders', route: OrderRoutes },
   { path: '/transactions', route: TransactionRoutes },
-  // { path: '/audit-logs', route: AuditLogRoutes },
+  { path: '/audit-logs', route: AuditLogRoutes },
 ];
 
 // 1. REGISTER AUTH FIRST (To keep Login/Logout out of the Audit Logs)
@@ -34,7 +36,7 @@ if (authRoute) {
 const nonAuditedPaths = ['/auth'];
 
 // 2. THE SECURITY CAMERA (Audit Logger)
-// router.use(auditLogger);
+router.use(auditLogger);
 
 // 3. REGISTER ALL OTHER MODULES
 moduleRoutes

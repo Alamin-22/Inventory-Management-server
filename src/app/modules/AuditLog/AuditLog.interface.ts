@@ -1,15 +1,15 @@
-import { TBrand } from '../auth/auth.interface';
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export type TAuditLog = {
-  adminId: string;
+import { Document, Types } from 'mongoose';
+
+export interface IAuditLog extends Document {
+  userId: Types.ObjectId;
   email: string;
   role: string;
-  action: string; // e.g., "PATCH /api/v1/products/123"
-  resource: string; // e.g., "products", "orders"
-  payload: any; // The data sent in req.body
-  status: number; // 200, 201, 403, 500
-  storePreference: TBrand;
-  ip?: string;
-  userAgent?: string;
-};
+  action: string;
+  resource: string; // e.g., "transactions", "products"
+  payload: any; // Sanitized req.body
+  status: number; // HTTP Response code (200, 400, 500)
+  ip: string;
+  userAgent: string;
+  createdAt: Date;
+}

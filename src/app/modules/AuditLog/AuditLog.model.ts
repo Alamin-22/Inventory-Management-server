@@ -1,25 +1,24 @@
-import { Schema, Connection, Model } from 'mongoose';
-import { TAuditLog } from './AuditLog.interface';
-import { storePreferenceConfig } from '../Order/Order.model';
+import { Schema, model } from 'mongoose';
+import { IAuditLog } from './AuditLog.interface';
 
-const auditLogSchema = new Schema<TAuditLog>(
+const auditLogSchema = new Schema<IAuditLog>(
   {
-    adminId: { type: String, required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     email: { type: String, required: true },
     role: { type: String, required: true },
     action: { type: String, required: true },
     resource: { type: String, required: true },
     payload: { type: Schema.Types.Mixed },
     status: { type: Number, required: true },
-    storePreference: storePreferenceConfig,
-    ip: { type: String },
-    userAgent: { type: String },
+    ip: { type: String, required: true },
+    userAgent: { type: String, required: true },
   },
   { timestamps: true },
 );
 
+// Auto-cleanup: Logs older than 60 days will be removed automatically by MongoDB
 auditLogSchema.index({ createdAt: 1 }, { expires: '60d' });
+auditLogSchema.index({ email: 1 });
+auditLogSchema.index({ resource: 1 });
 
-export const getAuditLogModel = (connection: Connection): Model<TAuditLog> => {
-  return connection.models.AuditLog || connection.model<TAuditLog>('AuditLog', auditLogSchema);
-};
+export const AuditLogModel = model<IAuditLog>('AuditLog', auditLogSchema);
