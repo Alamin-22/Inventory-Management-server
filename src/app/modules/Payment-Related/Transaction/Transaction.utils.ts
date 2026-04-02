@@ -1,11 +1,9 @@
-import { TBrand } from '@app/modules/auth/auth.interface';
+import { ClientSession, Types } from 'mongoose';
 import { IOrder } from '@app/modules/Order/Order.interface';
-import { getOrderModel } from '@app/modules/Order/Order.model';
-import { config } from '@config/env';
-import { Connection, ClientSession, Types } from 'mongoose';
-import { getTransactionModel } from './Transaction.model';
-import { getProductModel } from '@app/modules/products/product.model';
-import { PRODUCT_FULFILLMENT_TYPE } from '@app/modules/products/product.constants';
+import { OrderModel } from '@app/modules/Order/Order.model';
+import { TransactionModel } from './Transaction.model';
+import { ProductModel } from '@app/modules/products/product.model';
+import { ORDER_STATUS, PAYMENT_STATUS } from '@app/modules/Order/Order.constant';
 import { _restockItems } from '@app/modules/Order/Order.utils';
 
 export const roundTwoDecimals = (value: number): number => {
@@ -25,10 +23,9 @@ export const _calculateRefundDetails = (order: IOrder) => {
     };
   }
 
-  // Fee calculated on the Grand Total of the Order
-  const feePercentage = Number(config.refund_processing_fee_percentage) || 5;
-  const feeCharged = roundTwoDecimals((order.total * feePercentage) / 100); //charged based on order total
-  // const feeCharged = roundTwoDecimals((paidAmount * feePercentage) / 100); // based on paid amount
+  // Fee calculated on the Grand Total of the Order (Default 0 for local POS unless configured)
+  const feePercentage = /* Number(config.refund_processing_fee_percentage) || */ 0;
+  const feeCharged = roundTwoDecimals((order.totalAmount * feePercentage) / 100);
 
   // What the customer actually gets back
   let amountToReturn = roundTwoDecimals(paidAmount - feeCharged);
@@ -39,23 +36,14 @@ export const _calculateRefundDetails = (order: IOrder) => {
   return {
     isRefundable: true,
     paidAmount,
-    orderTotal: order.total,
+    orderTotal: order.totalAmount,
     feePercentage,
     feeCharged,
     amountToReturn,
   };
 };
 
-export const _updateOrderPaymentSummary = async (
-  orderId: Types.ObjectId,
-  connection: Connection,
-  storePreference: TBrand,
-  session: ClientSession,
-): Promise<IOrder> => {
-  const OrderModel = getOrderModel(connection);
-  const TransactionModel = getTransactionModel(connection);
-  const ProductModel = getProductModel(connection);
-
+export const _updateOrderPaymentSummary = async (orderId: Types.ObjectId, session: ClientSession): Promise<IOrder> => {
   const order = await OrderModel.findById(orderId).session(session);
   if (!order) throw new Error('Order not found during sync.');
 
@@ -74,86 +62,55 @@ export const _updateOrderPaymentSummary = async (
   const refundsTotal = totals.find((t) => t._id === 'refund')?.totalAmount || 0;
 
   const totalPaid = roundTwoDecimals(salesTotal - refundsTotal);
-  const dueAmount = roundTwoDecimals(order.total - totalPaid);
+
+  // Safe calculation to prevent negative due amounts
+  const dueAmount = roundTwoDecimals(Math.max(0, order.totalAmount - totalPaid));
 
   order.paymentInfo.paidAmount = totalPaid;
   order.paymentInfo.dueAmount = dueAmount;
 
   // --- BRANCH A: VOID / CANCELLATION PATH ---
-  // If totalPaid is 0 but sales existed, it means the order is fully settled/cancelled.
+  // If totalPaid is 0 but sales existed, it means the order is fully refunded/cancelled.
   if (salesTotal > 0 && totalPaid <= 0) {
-    if (order.fulfillmentStatus !== 'cancelled') {
-      order.fulfillmentStatus = 'cancelled';
-      order.paymentInfo.paymentType = 'refunded';
+    if (order.status !== ORDER_STATUS.CANCELLED) {
+      order.status = ORDER_STATUS.CANCELLED;
+      order.paymentInfo.paymentStatus = PAYMENT_STATUS.REFUNDED;
 
       order.orderHistory.push({
-        status: 'cancelled',
+        status: ORDER_STATUS.CANCELLED,
         title: 'Order Cancelled & Refunded',
-        description: `Ledger balanced to zero for ${storePreference}. Items restocked.`,
+        description: `Ledger balanced to zero. Items restocked.`,
         timestamp: new Date(),
       });
 
-      // Handle Inventory Reversion
-      for (const item of order.items) {
-        if (item.fulfillmentType === PRODUCT_FULFILLMENT_TYPE.CROSS_BORDER) {
-          // Pre-order: Decrease virtual slot count
-          await ProductModel.updateOne(
-            { 'variants.sku': item.sku },
-            { $inc: { 'variants.$.inventory.preOrdersSold': -item.quantity } },
-            { session },
-          );
-        } else {
-          // Standard: Increase physical stock
-          await _restockItems([item], ProductModel, session);
-        }
-      }
+      // Handle Inventory Reversion using our unified utility
+      await _restockItems(order.items, ProductModel, session);
     }
   }
   // --- BRANCH B: ACTIVE / SALE PATH ---
   else {
-    // Set Payment Label
+    // Set Payment Label using our precise Enums
     if (dueAmount <= 0) {
-      order.paymentInfo.paymentType = 'full';
+      order.paymentInfo.paymentStatus = PAYMENT_STATUS.PAID;
     } else if (totalPaid > 0) {
-      const saleCount = await TransactionModel.countDocuments({
-        order: order._id,
-        type: 'sale',
-      }).session(session);
-      // 'partial' for the 10-50% booking fee, 'remaining' for any payment after that.
-      order.paymentInfo.paymentType = saleCount > 1 ? 'remaining' : 'partial';
+      order.paymentInfo.paymentStatus = PAYMENT_STATUS.PARTIAL;
+    } else {
+      order.paymentInfo.paymentStatus = PAYMENT_STATUS.UNPAID;
     }
 
     /**
-     * AUTO-UPDATE STATUS: Handle Confirmation & History Messaging
-     * Confirmation to Standard, Pre-Order, and Group-Buy to 'confirmed' upon payment.
+     * AUTO-UPDATE STATUS:
+     * Move from 'Pending' to 'Confirmed' automatically upon receiving a payment.
      */
-    if (totalPaid > 0) {
-      let historyTitle = 'Order Confirmed';
-      let historyDesc = `Successfully processed payment via ${storePreference}. Current balance: ৳${order.paymentInfo.dueAmount}`;
+    if (totalPaid > 0 && order.status === ORDER_STATUS.PENDING) {
+      order.status = ORDER_STATUS.CONFIRMED;
 
-      if (order.orderType === 'pre-order') {
-        historyTitle = 'Pre-Order Payment Verified | Order Confirmed';
-      }
-
-      if (order.orderType === 'group-buy') {
-        historyTitle = 'Group Buy Confirmed | Spot Locked';
-        historyDesc = `Payment verified! You are officially in the deal. Remember, your final price will reduce as more members join. Current balance to settle later: ৳${order.paymentInfo.dueAmount}`;
-      }
-
-      // TRIGGER: Move from 'awaiting-payment' or 'group-buy-pending' to 'confirmed'
-      const needsConfirmation =
-        order.fulfillmentStatus === 'awaiting-payment' || order.fulfillmentStatus === 'group-buy-pending';
-
-      if (needsConfirmation) {
-        order.fulfillmentStatus = 'confirmed';
-
-        order.orderHistory.push({
-          status: 'confirmed',
-          title: historyTitle,
-          description: historyDesc,
-          timestamp: new Date(),
-        });
-      }
+      order.orderHistory.push({
+        status: ORDER_STATUS.CONFIRMED,
+        title: 'Order Confirmed',
+        description: `Payment recorded. Current balance: ৳${order.paymentInfo.dueAmount}`,
+        timestamp: new Date(),
+      });
     }
   }
 
