@@ -10,6 +10,7 @@ import { IAdmin } from '../admin/admin.interface';
 import { AdminPermissions } from '../admin/admin.constant';
 import type { JwtPayload } from 'jsonwebtoken';
 import { QueryBuilder } from '@app/classes/QueryBuilder';
+import generateAvatar from '@utils/generateAvatar';
 
 const createStaffMember = async (payload: { password?: string; admin: Partial<IAdmin> }) => {
   const session = await mongoose.startSession();
@@ -33,6 +34,11 @@ const createStaffMember = async (payload: { password?: string; admin: Partial<IA
 
     payload.admin.id = customId;
     payload.admin.user = newUser[0]._id;
+
+    payload.admin.profileImg = {
+      url: generateAvatar(payload.admin.name || 'User'),
+      publicId: '',
+    };
 
     const newAdmin = await Admin.create([payload.admin], { session });
     if (!newAdmin.length) throw new AppError('Failed to create staff profile', httpStatus.BAD_REQUEST);

@@ -35,7 +35,7 @@ const loginUser = async (payload: TLoginUser) => {
   }
 
   const jwtPayload = {
-    userId: user._id.toString(),
+    id: user._id.toString(),
     role: user.role,
     email: user.email,
     permissions,
@@ -63,13 +63,13 @@ const loginUser = async (payload: TLoginUser) => {
   };
 };
 
-const getMe = async (userId: string, role: string) => {
+const getMe = async (id: string, role: string) => {
   let result;
 
   const rolesWithProfiles: TUserRole[] = [USER_ROLE.super_admin, USER_ROLE.admin, USER_ROLE.manager];
 
   if (rolesWithProfiles.includes(role as TUserRole)) {
-    result = await User.findById(userId)
+    result = await User.findById(id)
       // 1. Parent (User): Inclusion only
       .select('id email role status adminProfile')
       .populate({
@@ -106,7 +106,7 @@ const refreshToken = async (token: string) => {
   }
 
   const jwtPayload = {
-    userId: user._id.toString(),
+    id: user._id.toString(),
     role: user.role,
     email: user.email,
     permissions,
@@ -140,7 +140,12 @@ const forgetPassword = async (email: string) => {
   if (!user) throw new AppError('User not found', httpStatus.NOT_FOUND);
 
   const resetToken = createToken(
-    { userId: user._id.toString(), role: user.role, email: user.email },
+    {
+      id: user._id.toString(),
+      role: user.role,
+      email: user.email,
+      permissions: [],
+    },
     config.accessTokenSecret,
     '10m',
   );
@@ -175,13 +180,13 @@ const resetPassword = async (payload: TResetPasswordPayload, token: string) => {
   return null;
 };
 
-const updateSuperAdminEmail = async (userId: string, payload: { newEmail: string; currentPassword: string }) => {
+const updateSuperAdminEmail = async (id: string, payload: { newEmail: string; currentPassword: string }) => {
   const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
 
-    const user = await User.findById(userId).select('+password');
+    const user = await User.findById(id).select('+password');
     if (!user || user.role !== USER_ROLE.super_admin) {
       throw new AppError('Unauthorized: This action is reserved for the Super Admin.', httpStatus.FORBIDDEN);
     }
@@ -192,8 +197,8 @@ const updateSuperAdminEmail = async (userId: string, payload: { newEmail: string
     const emailExists = await User.findOne({ email: payload.newEmail.toLowerCase() });
     if (emailExists) throw new AppError('Conflict: This email is already registered.', httpStatus.CONFLICT);
 
-    await User.findByIdAndUpdate(userId, { email: payload.newEmail.toLowerCase() }, { session });
-    await Admin.findOneAndUpdate({ user: userId }, { email: payload.newEmail.toLowerCase() }, { session });
+    await User.findByIdAndUpdate(id, { email: payload.newEmail.toLowerCase() }, { session });
+    await Admin.findOneAndUpdate({ user: id }, { email: payload.newEmail.toLowerCase() }, { session });
 
     await session.commitTransaction();
     return { success: true, message: 'Owner identity updated. Please log in with your new credentials.' };

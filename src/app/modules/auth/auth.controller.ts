@@ -99,7 +99,7 @@ const resetPassword = catchAsync(async (req, res) => {
 });
 
 const updateSuperAdminEmail: RequestHandler = catchAsync(async (req, res) => {
-  const result = await AuthServices.updateSuperAdminEmail(req.user.userId, req.body);
+  const result = await AuthServices.updateSuperAdminEmail(req.user.id, req.body);
   sendResponse(res, { statusCode: httpStatus.OK, success: true, message: 'Master Key updated.', data: result });
 });
 
