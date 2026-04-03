@@ -14,8 +14,6 @@ router.get(
   AdminControllers.getAdminPermissionsMeta,
 );
 
-router.get('/', AuthValidationMiddleWare(...HIGH_LEVEL_STAFF), AdminControllers.getAllAdmins);
-
 router.get('/:id', AuthValidationMiddleWare(...HIGH_LEVEL_STAFF, USER_ROLE.manager), AdminControllers.getSingleAdmin);
 
 router.patch(

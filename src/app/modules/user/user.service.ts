@@ -48,6 +48,7 @@ const createStaffMember = async (payload: { password?: string; admin: Partial<IA
 };
 
 const getAllUsersFromDB = async (query: Record<string, unknown>) => {
+  console.log('api called ');
   const userQuery = new QueryBuilder(User, query)
     .search(UserSearchableFields)
     .filter()
@@ -74,7 +75,7 @@ const getAllUsersFromDB = async (query: Record<string, unknown>) => {
       ],
     })
 
-    .select('id, email, role, status, isVerified, createdAt, adminProfile');
+    .select('id, email, role, status, isVerified, createdAt, lastActive, adminProfile');
 
   const result = await userQuery.exec();
   const meta = await userQuery.getQueryMeta();
