@@ -46,7 +46,9 @@ const updateAdmin = async (id: string, payload: TUpdateStaffPayload, currentUser
 
     // 1. Fetch Target User
     const targetUser = await User.findOne({ id });
-    if (!targetUser) throw new AppError('Staff record not found', httpStatus.NOT_FOUND);
+    if (!targetUser) {
+      throw new AppError('Staff record not found', httpStatus.NOT_FOUND);
+    }
 
     /**
      * BOSS GUARD: Super Admin Protection
@@ -60,27 +62,18 @@ const updateAdmin = async (id: string, payload: TUpdateStaffPayload, currentUser
 
     /**
      * HIERARCHY GUARD: Manager Restrictions
-     * A Manager is strictly forbidden from:
-     * 1. Changing any user's Role (escalation/promotion).
-     * 2. Modifying any user's Permissions.
+     * Per requirement: Managers CAN manage permissions, but NOT roles.
      */
     if (currentUser.role === USER_ROLE.manager) {
-      // Check for Role Change attempt
+      // BLOCK: Role changes (Promotion/Demotion of system level)
       if (role && role !== targetUser.role) {
-        throw new AppError('Forbidden: Managers cannot modify system roles or promote users.', httpStatus.FORBIDDEN);
+        throw new AppError('Forbidden: Managers are not authorized to modify system roles.', httpStatus.FORBIDDEN);
       }
 
-      // Check for Permission Change attempt
-      if (admin?.permissions) {
-        throw new AppError('Forbidden: Managers cannot modify system access permissions.', httpStatus.FORBIDDEN);
-      }
-
-      // Optional: Managers shouldn't edit anyone but themselves?
-      // If you want Managers to ONLY edit their own profile:
-      // if (currentUser.id !== targetUser.id) throw new AppError('Forbidden...', httpStatus.FORBIDDEN);
+      // NOTE: admin.permissions is now ALLOWED for Managers here.
     }
 
-    // 2. Handle Admin Profile Updates
+    // 2. Handle Admin Profile Updates (Profile Collection)
     if (admin && Object.keys(admin).length > 0) {
       const { name, contactNo, profileImg, permissions } = admin;
       const adminUpdateData: Record<string, unknown> = {};
@@ -91,10 +84,11 @@ const updateAdmin = async (id: string, payload: TUpdateStaffPayload, currentUser
           adminUpdateData['profileImg.url'] = generateAvatar(name);
         }
       }
+
       if (contactNo) adminUpdateData.contactNo = contactNo;
       if (profileImg) adminUpdateData.profileImg = profileImg;
 
-      // Note: Permissions update is already guarded by the HIERARCHY GUARD above
+      // Managers can update permission
       if (permissions) adminUpdateData.permissions = permissions;
 
       const updatedAdmin = await Admin.findOneAndUpdate({ id }, adminUpdateData, {
@@ -108,11 +102,11 @@ const updateAdmin = async (id: string, payload: TUpdateStaffPayload, currentUser
       }
     }
 
-    // 3. Handle User Auth Updates (Role & Password)
+    // 3. Handle User Auth Updates (Auth Collection)
     if (role || password) {
       const userUpdateData: Record<string, unknown> = {};
 
-      // Role is already guarded by HIERARCHY GUARD above
+      // Role is only updated if it passed the Hierarchy Guard above
       if (role) userUpdateData.role = role;
 
       if (password) {
@@ -133,6 +127,7 @@ const updateAdmin = async (id: string, payload: TUpdateStaffPayload, currentUser
     }
 
     await session.commitTransaction();
+
     return await Admin.findOne({ id }).populate('user');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
