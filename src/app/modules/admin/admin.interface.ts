@@ -10,10 +10,7 @@ export interface IAdmin {
   email: string;
   contactNo: string;
 
-  profileImg?: {
-    url: string;
-    publicId: string;
-  };
+  profileImg?: string;
 
   permissions: TAdminPermission[];
 

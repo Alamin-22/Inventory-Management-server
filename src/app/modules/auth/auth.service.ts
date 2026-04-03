@@ -62,6 +62,16 @@ const loginUser = async (payload: TLoginUser) => {
   };
 };
 
+const getMe = async (userId: string, role: string) => {
+  let result;
+  if (role === USER_ROLE.super_admin || role === USER_ROLE.admin || role === USER_ROLE.manager) {
+    result = await User.findById(userId).populate('adminProfile');
+  }
+
+  if (!result) throw new AppError('User session not found', httpStatus.NOT_FOUND);
+  return result;
+};
+
 const refreshToken = async (token: string) => {
   const decoded = VerifyToken(token, config.refreshTokenSecret);
   const { email, iat } = decoded;
@@ -188,4 +198,5 @@ export const AuthServices = {
   forgetPassword,
   resetPassword,
   updateSuperAdminEmail,
+  getMe,
 };

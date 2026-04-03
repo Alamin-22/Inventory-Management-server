@@ -4,11 +4,12 @@ import mongoose from 'mongoose';
 import { AppError } from '@app/classes/AppError';
 import { User } from './user.model';
 import { Admin } from '../admin/admin.model';
-import { USER_ROLE, USER_STATUS } from './user.constants';
+import { USER_ROLE, USER_STATUS, UserSearchableFields } from './user.constants';
 import { generateUserId } from './user.utils';
 import { IAdmin } from '../admin/admin.interface';
 import { AdminPermissions } from '../admin/admin.constant';
 import type { JwtPayload } from 'jsonwebtoken';
+import { QueryBuilder } from '@app/classes/QueryBuilder';
 
 const createStaffMember = async (payload: { password?: string; admin: Partial<IAdmin> }) => {
   const session = await mongoose.startSession();
@@ -44,6 +45,47 @@ const createStaffMember = async (payload: { password?: string; admin: Partial<IA
   } finally {
     await session.endSession();
   }
+};
+
+const getAllUsersFromDB = async (query: Record<string, unknown>) => {
+  const userQuery = new QueryBuilder(User, query)
+    .search(UserSearchableFields)
+    .filter()
+    .sort()
+    .paginate()
+    .populate({
+      from: 'admins',
+      localField: '_id',
+      foreignField: 'user',
+      as: 'adminProfile',
+      unwind: true,
+    })
+    .limitFields();
+
+  const result = await userQuery.exec();
+  const meta = await userQuery.getQueryMeta();
+  return { meta, result };
+};
+
+const getSingleUserFromDB = async (id: string) => {
+  const result = await User.aggregate([
+    { $match: { id, isDeleted: false } },
+    {
+      $lookup: {
+        from: 'admins',
+        localField: '_id',
+        foreignField: 'user',
+        as: 'adminProfile',
+      },
+    },
+    { $unwind: { path: '$adminProfile', preserveNullAndEmptyArrays: true } },
+  ]);
+
+  if (!result || result.length === 0) {
+    throw new AppError('User not found', httpStatus.NOT_FOUND);
+  }
+
+  return result[0];
 };
 
 const deleteUser = async (id: string, currentUser: JwtPayload) => {
@@ -93,4 +135,6 @@ export const UserServices = {
   createStaffMember,
   deleteUser,
   changeUserStatus,
+  getAllUsersFromDB,
+  getSingleUserFromDB,
 };

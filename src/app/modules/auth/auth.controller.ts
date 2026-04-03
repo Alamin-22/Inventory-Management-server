@@ -27,6 +27,18 @@ const loginUser: RequestHandler = catchAsync(async (req, res) => {
   });
 });
 
+const getMe: RequestHandler = catchAsync(async (req, res) => {
+  const { userId, role } = req.user;
+  const result = await AuthServices.getMe(userId, role);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User profile retrieved successfully',
+    data: result,
+  });
+});
+
 const refreshToken: RequestHandler = catchAsync(async (req, res) => {
   const { refreshToken } = req.cookies;
   const result = await AuthServices.refreshToken(refreshToken);
@@ -99,4 +111,5 @@ export const AuthControllers = {
   forgetPassword,
   resetPassword,
   updateSuperAdminEmail,
+  getMe,
 };

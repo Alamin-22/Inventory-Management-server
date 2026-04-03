@@ -60,11 +60,19 @@ userSchema.statics.isPasswordMatched = async function (plainTextPassword, hashed
 };
 
 userSchema.statics.isJWTIssuedBeforePasswordChanged = function (
-  passwordChangedTimestamp: Date,
-  jwtIssuedTimestamp: number,
+  passwordChangedTimeStamp: Date,
+  JwtIssuedTimeStamp: number,
 ) {
-  const passwordChangedTime = new Date(passwordChangedTimestamp).getTime() / 1000;
-  return passwordChangedTime > jwtIssuedTimestamp;
+  if (!passwordChangedTimeStamp) {
+    // If password was never changed, the token cannot be "issued before" a change.
+    // So we return false (meaning the token is perfectly valid).
+    return false;
+  }
+
+  const passwordChangedTime = Math.trunc(passwordChangedTimeStamp.getTime() / 1000);
+
+  // Return TRUE ONLY IF the token is OLDER (less than) the password change time.
+  return passwordChangedTime > JwtIssuedTimeStamp;
 };
 
 export const User = mongoose.model<TUser, TUserModel>('User', userSchema);
