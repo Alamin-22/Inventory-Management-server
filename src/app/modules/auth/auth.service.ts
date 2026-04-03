@@ -12,6 +12,7 @@ import { User } from '../user/user.model';
 import { Admin } from '../admin/admin.model';
 import ForgotPasswordTemplate from '@app/Email_Templates/Authentication-Related/forgotPassword.template';
 import { TAdminPermission } from '../admin/admin.constant';
+import { TUserRole } from '../user/user.interface';
 
 const loginUser = async (payload: TLoginUser) => {
   const { email, password } = payload;
@@ -64,11 +65,24 @@ const loginUser = async (payload: TLoginUser) => {
 
 const getMe = async (userId: string, role: string) => {
   let result;
-  if (role === USER_ROLE.super_admin || role === USER_ROLE.admin || role === USER_ROLE.manager) {
-    result = await User.findById(userId).populate('adminProfile');
+
+  const rolesWithProfiles: TUserRole[] = [USER_ROLE.super_admin, USER_ROLE.admin, USER_ROLE.manager];
+
+  if (rolesWithProfiles.includes(role as TUserRole)) {
+    result = await User.findById(userId)
+      // 1. Parent (User): Inclusion only
+      .select('id email role status adminProfile')
+      .populate({
+        path: 'adminProfile',
+        select: 'name email contactNo permissions profileImg -_id',
+      })
+      .lean();
   }
 
-  if (!result) throw new AppError('User session not found', httpStatus.NOT_FOUND);
+  if (!result) {
+    throw new AppError('User session not found', httpStatus.NOT_FOUND);
+  }
+
   return result;
 };
 

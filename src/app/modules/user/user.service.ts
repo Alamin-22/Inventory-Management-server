@@ -59,8 +59,22 @@ const getAllUsersFromDB = async (query: Record<string, unknown>) => {
       foreignField: 'user',
       as: 'adminProfile',
       unwind: true,
+
+      pipeline: [
+        {
+          $project: {
+            name: 1,
+            email: 1,
+            contactNo: 1,
+            permissions: 1,
+            profileImg: 1,
+            _id: 0,
+          },
+        },
+      ],
     })
-    .limitFields();
+
+    .select('id, email, role, status, isVerified, createdAt, adminProfile');
 
   const result = await userQuery.exec();
   const meta = await userQuery.getQueryMeta();
