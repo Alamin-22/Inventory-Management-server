@@ -11,8 +11,9 @@ import { AdminPermissions } from '../admin/admin.constant';
 import type { JwtPayload } from 'jsonwebtoken';
 import { QueryBuilder } from '@app/classes/QueryBuilder';
 import generateAvatar from '@utils/generateAvatar';
+import { TUserRole } from './user.interface';
 
-const createStaffMember = async (payload: { password?: string; admin: Partial<IAdmin> }) => {
+const createStaffMember = async (payload: { password?: string; role?: TUserRole; admin: Partial<IAdmin> }) => {
   const session = await mongoose.startSession();
 
   try {
@@ -24,7 +25,7 @@ const createStaffMember = async (payload: { password?: string; admin: Partial<IA
       id: customId,
       email: payload.admin.email,
       password: payload.password || 'defaultPassword123!',
-      role: USER_ROLE.manager, // Default newly created staff to manager level
+      role: payload.role || USER_ROLE.manager,
       status: USER_STATUS.active,
       isVerified: true,
     };
@@ -54,7 +55,6 @@ const createStaffMember = async (payload: { password?: string; admin: Partial<IA
 };
 
 const getAllUsersFromDB = async (query: Record<string, unknown>) => {
-  console.log('api called ');
   const userQuery = new QueryBuilder(User, query)
     .search(UserSearchableFields)
     .filter()
@@ -116,27 +116,49 @@ const deleteUser = async (id: string, currentUser: JwtPayload) => {
     session.startTransaction();
 
     const targetUser = await User.findOne({ id });
-    if (!targetUser) throw new AppError('User not found', httpStatus.NOT_FOUND);
+    if (!targetUser) {
+      throw new AppError('User not found', httpStatus.NOT_FOUND);
+    }
 
+    //  CRITICAL: Prevent Self-Deletion
+    if (targetUser.id === currentUser.id) {
+      throw new AppError('Forbidden: You cannot delete your own account.', httpStatus.FORBIDDEN);
+    }
+
+    //  Safety Check: Protect Super Admin
     if (targetUser.role === USER_ROLE.super_admin) {
       throw new AppError('Forbidden: Cannot delete Super Admin', httpStatus.FORBIDDEN);
     }
 
+    //  Permission Logic: Only Super Admin or Full Access Admins can remove other Admins
     if (currentUser.role !== USER_ROLE.super_admin) {
       const userPermissions = currentUser.permissions || [];
       const hasFullAccess = userPermissions.includes(AdminPermissions.FULL_ACCESS);
 
       if (!hasFullAccess && targetUser.role === USER_ROLE.admin) {
-        throw new AppError('Forbidden: Only Full Access admins can remove other admins.', httpStatus.FORBIDDEN);
+        throw new AppError(
+          'Forbidden: You lack sufficient permissions to remove this administrator.',
+          httpStatus.FORBIDDEN,
+        );
       }
     }
 
-    await Admin.findOneAndUpdate({ id }, { isDeleted: true }, { session });
+    // PERMANENT DELETE - Step A: Admin Profile
+    const adminDeletion = await Admin.deleteOne({ id }, { session });
 
-    const deletedUser = await User.findOneAndUpdate({ id }, { isDeleted: true }, { new: true, session });
-    if (!deletedUser) throw new AppError('Failed to delete user', httpStatus.BAD_REQUEST);
+    if (adminDeletion.deletedCount === 0) {
+      console.warn(`Admin profile not found for ID: ${id}, proceeding to remove auth record.`);
+    }
+
+    //  PERMANENT DELETE - Step B: User Auth Record
+    const deletedUser = await User.findOneAndDelete({ id }, { session });
+
+    if (!deletedUser) {
+      throw new AppError('Failed to delete user auth record', httpStatus.BAD_REQUEST);
+    }
 
     await session.commitTransaction();
+
     return deletedUser;
   } catch (err: any) {
     await session.abortTransaction();

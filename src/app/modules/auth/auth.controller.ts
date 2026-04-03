@@ -28,8 +28,8 @@ const loginUser: RequestHandler = catchAsync(async (req, res) => {
 });
 
 const getMe: RequestHandler = catchAsync(async (req, res) => {
-  const { userId, role } = req.user;
-  const result = await AuthServices.getMe(userId, role);
+  const { id, role } = req.user;
+  const result = await AuthServices.getMe(id, role);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

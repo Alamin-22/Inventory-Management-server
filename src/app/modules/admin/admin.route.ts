@@ -6,21 +6,34 @@ import { AdminValidation } from './admin.validation';
 import ValidateRequestMiddleWare from '@app/middlewares/ValidateRequestMiddleWare';
 
 const router = express.Router();
-const HIGH_LEVEL_STAFF = [USER_ROLE.admin, USER_ROLE.super_admin];
 
-router.get(
-  '/meta/permissions',
-  AuthValidationMiddleWare(...HIGH_LEVEL_STAFF),
-  AdminControllers.getAdminPermissionsMeta,
-);
+const ALL_STAFF = [USER_ROLE.super_admin, USER_ROLE.admin, USER_ROLE.manager];
 
-router.get('/:id', AuthValidationMiddleWare(...HIGH_LEVEL_STAFF, USER_ROLE.manager), AdminControllers.getSingleAdmin);
+/**
+ * 1. PERMISSIONS MANIFEST
+ */
+router.get('/meta/permissions', AuthValidationMiddleWare(...ALL_STAFF), AdminControllers.getAdminPermissionsMeta);
 
+/**
+ * 2. GET SINGLE PROFILE
+ * All staff members can view a profile (Managers can view their own/others,
+ * depending on your frontend access).
+ */
+router.get('/:id', AuthValidationMiddleWare(...ALL_STAFF), AdminControllers.getSingleAdmin);
+
+/**
+ * 3. UPDATE STAFF PROFILE
+ * We allow 'manager' here so they can update their own Name/Contact/Image.
+ * * CRITICAL: The Backend Service Hierarchy Guard prevents:
+ * - Managers from editing other people's profiles.
+ * - Managers from changing their own Role.
+ * - Managers from changing their own Permissions.
+ */
 router.patch(
   '/:id',
-  AuthValidationMiddleWare(...HIGH_LEVEL_STAFF),
+  AuthValidationMiddleWare(...ALL_STAFF),
   ValidateRequestMiddleWare(AdminValidation.updateAdminZodSchema),
-  AdminControllers.updateAdmin,
+  AdminControllers.updateStaff,
 );
 
 export const AdminRoutes = router;
