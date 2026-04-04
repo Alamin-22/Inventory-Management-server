@@ -87,7 +87,7 @@ const createOrderIntoDB = async (payload: Partial<IOrder>, adminId?: string, pdf
       orderId,
       customerName: payload.customerName || 'Walk-in Customer',
       customerPhone: payload.customerPhone,
-      customerEmail: payload.customerEmail,
+      customerEmail: payload.customerEmail === '' ? undefined : payload.customerEmail,
       shippingAddress: payload.shippingAddress || 'In-Store POS',
       items: processedItems,
       totalAmount,
