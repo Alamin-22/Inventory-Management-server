@@ -44,36 +44,64 @@ const updateAdmin = async (id: string, payload: TUpdateStaffPayload, currentUser
   try {
     session.startTransaction();
 
-    // 1. Fetch Target User
+    // 1. Fetch Target User (using the Custom ID from params)
     const targetUser = await User.findOne({ id });
     if (!targetUser) {
       throw new AppError('Staff record not found', httpStatus.NOT_FOUND);
     }
 
     /**
+     * SELF-LOCKOUT PROTECTION (IDENTICAL ID TYPE FIX)
+     * currentUser.id is the MongoDB _id from the token.
+     * targetUser._id is the MongoDB _id from the database.
+     */
+    const isSelfUpdate = currentUser.id === targetUser._id.toString();
+
+    if (isSelfUpdate) {
+      // Prevent changing own role
+      if (role && role !== targetUser.role) {
+        throw new AppError(
+          'Security Violation: You cannot change your own system role. Demoting yourself would lock you out of this dashboard.',
+          httpStatus.FORBIDDEN,
+        );
+      }
+
+      // Prevent changing own permissions
+      if (admin?.permissions) {
+        throw new AppError(
+          'Security Violation: You cannot modify your own permissions. This protection is active to prevent accidental account lockout.',
+          httpStatus.FORBIDDEN,
+        );
+      }
+    }
+
+    /**
      * BOSS GUARD: Super Admin Protection
-     * Only the Super Admin can modify their own account.
+     * Ensures only the Super Admin can touch the Super Admin account.
      */
     if (targetUser.role === USER_ROLE.super_admin) {
-      if (currentUser.id !== targetUser.id) {
-        throw new AppError('Forbidden: Only the Super Admin can modify this account.', httpStatus.FORBIDDEN);
+      if (!isSelfUpdate) {
+        throw new AppError(
+          'Access Denied: The Master Account (Super Admin) can only be modified by the owner themselves.',
+          httpStatus.FORBIDDEN,
+        );
       }
     }
 
     /**
      * HIERARCHY GUARD: Manager Restrictions
-     * Per requirement: Managers CAN manage permissions, but NOT roles.
+     * Managers cannot change roles of others.
      */
-    if (currentUser.role === USER_ROLE.manager) {
-      // BLOCK: Role changes (Promotion/Demotion of system level)
+    if (currentUser.role === USER_ROLE.manager && !isSelfUpdate) {
       if (role && role !== targetUser.role) {
-        throw new AppError('Forbidden: Managers are not authorized to modify system roles.', httpStatus.FORBIDDEN);
+        throw new AppError(
+          'Access Denied: Managers are not authorized to modify system roles of other personnel.',
+          httpStatus.FORBIDDEN,
+        );
       }
-
-      // NOTE: admin.permissions is now ALLOWED for Managers here.
     }
 
-    // 2. Handle Admin Profile Updates (Profile Collection)
+    // 2. Handle Admin Profile Updates
     if (admin && Object.keys(admin).length > 0) {
       const { name, contactNo, profileImg, permissions } = admin;
       const adminUpdateData: Record<string, unknown> = {};
@@ -84,12 +112,13 @@ const updateAdmin = async (id: string, payload: TUpdateStaffPayload, currentUser
           adminUpdateData['profileImg.url'] = generateAvatar(name);
         }
       }
-
       if (contactNo) adminUpdateData.contactNo = contactNo;
       if (profileImg) adminUpdateData.profileImg = profileImg;
 
-      // Managers can update permission
-      if (permissions) adminUpdateData.permissions = permissions;
+      // Logic Fix: Only allow permissions update if it's NOT a self-update
+      if (permissions && !isSelfUpdate) {
+        adminUpdateData.permissions = permissions;
+      }
 
       const updatedAdmin = await Admin.findOneAndUpdate({ id }, adminUpdateData, {
         new: true,
@@ -102,12 +131,11 @@ const updateAdmin = async (id: string, payload: TUpdateStaffPayload, currentUser
       }
     }
 
-    // 3. Handle User Auth Updates (Auth Collection)
+    // 3. Handle User Auth Updates
     if (role || password) {
       const userUpdateData: Record<string, unknown> = {};
 
-      // Role is only updated if it passed the Hierarchy Guard above
-      if (role) userUpdateData.role = role;
+      if (role && !isSelfUpdate) userUpdateData.role = role;
 
       if (password) {
         userUpdateData.password = password;
@@ -115,22 +143,22 @@ const updateAdmin = async (id: string, payload: TUpdateStaffPayload, currentUser
         userUpdateData.passwordChangedAt = new Date();
       }
 
-      const updatedUser = await User.findOneAndUpdate({ id }, userUpdateData, {
-        new: true,
-        runValidators: true,
-        session,
-      });
+      if (Object.keys(userUpdateData).length > 0) {
+        const updatedUser = await User.findOneAndUpdate({ id }, userUpdateData, {
+          new: true,
+          runValidators: true,
+          session,
+        });
 
-      if (!updatedUser) {
-        throw new AppError('User auth record not found', httpStatus.NOT_FOUND);
+        if (!updatedUser) {
+          throw new AppError('User auth record not found', httpStatus.NOT_FOUND);
+        }
       }
     }
 
     await session.commitTransaction();
-
     return await Admin.findOne({ id }).populate('user');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
+  } catch (err) {
     await session.abortTransaction();
     throw err;
   } finally {
