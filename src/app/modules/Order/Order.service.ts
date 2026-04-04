@@ -87,7 +87,7 @@ const createOrderIntoDB = async (payload: Partial<IOrder>, adminId?: string, pdf
       orderId,
       customerName: payload.customerName || 'Walk-in Customer',
       customerPhone: payload.customerPhone,
-      customerEmail: payload.customerEmail,
+      customerEmail: payload.customerEmail === '' ? undefined : payload.customerEmail,
       shippingAddress: payload.shippingAddress || 'In-Store POS',
       items: processedItems,
       totalAmount,
@@ -183,23 +183,39 @@ const updateOrderStatusByAdmin = async (
   const order = await OrderModel.findOne({ orderId, isDeleted: false });
   if (!order) throw new AppError(`Order ${orderId} not found.`, httpStatus.NOT_FOUND);
 
+  // 1. HARD GUARD: Prevent updates to already Cancelled orders
   if (order.status === ORDER_STATUS.CANCELLED) {
-    throw new AppError(`Order ${orderId} is already cancelled.`, httpStatus.BAD_REQUEST);
+    throw new AppError(`Order ${orderId} is already cancelled and cannot be modified.`, httpStatus.BAD_REQUEST);
+  }
+
+  // 2. FINANCIAL GUARD: No payment, no delivery.
+  // We check if the status is moving to DELIVERED and if there is a remaining balance.
+  if (newStatus === ORDER_STATUS.DELIVERED) {
+    const isFullyPaid = order.paymentInfo.dueAmount <= 0;
+
+    if (!isFullyPaid) {
+      throw new AppError(
+        `Cannot mark as DELIVERED. Order has a remaining balance of ${order.paymentInfo.dueAmount}. Please clear the payment first via the Transaction module.`,
+        httpStatus.PAYMENT_REQUIRED,
+      );
+    }
   }
 
   const session = await startSession();
   try {
     session.startTransaction();
 
+    // 3. RESTOCK LOGIC: If moving to cancelled, put items back in inventory
     if (newStatus === ORDER_STATUS.CANCELLED) {
       await _restockItems(order.items, ProductModel, session);
     }
 
+    // 4. Update the state
     order.status = newStatus;
     order.orderHistory.push({
       status: newStatus,
       title: `Status updated to ${newStatus}`,
-      description: notes || `Order status manually updated.`,
+      description: notes || `Order status manually updated by admin.`,
       timestamp: new Date(),
       performedBy: new Types.ObjectId(adminId),
     });
@@ -207,13 +223,14 @@ const updateOrderStatusByAdmin = async (
     await order.save({ session });
     await session.commitTransaction();
 
+    //  Inform the customer
     if (notifyCustomer) {
       OrderRelatedEmails.sendOrderStatusUpdateEmail(
         order,
         ProductModel,
         `Order ${newStatus}`,
         notes || `Your order status has been updated to ${newStatus}.`,
-      ).catch(console.error);
+      ).catch((err) => console.error(`Email failed for order ${orderId}:`, err));
     }
 
     return order;

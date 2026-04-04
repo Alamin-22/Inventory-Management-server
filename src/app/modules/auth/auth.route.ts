@@ -10,6 +10,12 @@ const router = express.Router();
 // --- Public Routes ---
 router.post('/login', ValidateRequestMiddleWare(AuthValidation.loginValidationSchema), AuthControllers.loginUser);
 
+router.get(
+  '/get-me',
+  AuthValidationMiddleWare(USER_ROLE.super_admin, USER_ROLE.admin, USER_ROLE.manager),
+  AuthControllers.getMe,
+);
+
 router.post('/refresh-token', AuthControllers.refreshToken);
 
 router.post(

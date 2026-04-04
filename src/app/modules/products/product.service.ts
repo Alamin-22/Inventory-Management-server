@@ -129,7 +129,6 @@ const createProductIntoDB = async (payload: IProduct): Promise<IProduct> => {
 // for admin panel
 const getAllProductsForDashboardFromDB = async (query: Record<string, any>) => {
   const queryObj = { ...query };
-
   if (queryObj.category) {
     queryObj.category = await getExpandedCategoryIds(queryObj.category);
   }
@@ -169,18 +168,15 @@ const getAllProductsForDashboardFromDB = async (query: Record<string, any>) => {
 const getAllPublishedProductsFromDB = async (query: Record<string, any>) => {
   const queryObj = { ...query };
 
-  // 1. Handle Category Slug Fast-fail
   if (queryObj.categorySlug) {
     const categoryDoc = await Category.findOne({ slug: queryObj.categorySlug }).select('_id').lean();
 
-    // Fast-fail: If slug is invalid, return empty array instantly
     if (!categoryDoc) {
       return {
-        meta: { total: 0, page: Number(queryObj.page) || 1, limit: Number(queryObj.limit) || 24, totalPages: 0 },
+        meta: { total: 0, page: Number(queryObj.page) || 1, limit: Number(queryObj.limit) || 20, totalPages: 0 },
         result: [],
       };
     }
-
     queryObj.category = categoryDoc._id.toString();
     delete queryObj.categorySlug;
   }
@@ -189,53 +185,26 @@ const getAllPublishedProductsFromDB = async (query: Record<string, any>) => {
     queryObj.category = await getExpandedCategoryIds(queryObj.category);
   }
 
-  const productQuery = new QueryBuilder<IProduct>(ProductModel, {
+  const productQuery = new QueryBuilder(ProductModel, {
     ...queryObj,
     isPublished: true,
+    isDeleted: false,
     status: { $in: [PRODUCT_STATUS.Active, PRODUCT_STATUS.Out_Of_Stock] },
   })
     .search(productSearchableFields)
     .filter()
     .sort()
     .paginate()
-    // SHAPE STAGE 1: Extract default variant
-    .addStage({
-      $project: {
-        _id: 1,
-        title: 1,
-        slug: 1,
-        defaultImage: 1,
-        defaultPriceBDT: 1,
-        createdAt: 1,
-        status: 1,
-        defaultVariant: {
-          $arrayElemAt: [
-            {
-              $filter: {
-                input: { $ifNull: ['$variants', []] },
-                as: 'v',
-                cond: { $eq: ['$$v.sku', '$defaultVariantSku'] },
-              },
-            },
-            0,
-          ],
-        },
-      },
-    })
-    // SHAPE STAGE 2: Format exactly to a lean inventory list
-    .addStage({
-      $project: {
-        _id: 1,
-        title: 1,
-        slug: 1,
-        image: '$defaultImage',
-        price: '$defaultPriceBDT',
-        oldPrice: '$defaultVariant.oldPriceBDT',
-        discountPercentage: '$defaultVariant.discountPercentage',
-        createdAt: 1,
-        status: 1,
-      },
-    });
+    .select('title, slug, category, variants, status');
+
+  productQuery.populate({
+    from: 'categories',
+    localField: 'category',
+    foreignField: '_id',
+    as: 'category',
+    unwind: true,
+    pipeline: [{ $project: { name: 1, slug: 1 } }],
+  });
 
   const result = await productQuery.exec();
   const meta = await productQuery.getQueryMeta();
@@ -246,14 +215,10 @@ const getAllPublishedProductsFromDB = async (query: Record<string, any>) => {
 const getSingleProductFromDB = async (identifier: string) => {
   const isObjectId = Types.ObjectId.isValid(identifier);
 
-  // Admin/IMS (ID): Fetch strictly by ID, regardless of publish status.
-  // Public (Slug): Fetch by slug, MUST be published and not deleted.
   const findQuery = isObjectId
     ? { _id: new Types.ObjectId(identifier) }
     : { slug: identifier, isDeleted: { $ne: true }, isPublished: true };
 
-  // Strip out internal admin fields to save bandwidth for public requests.
-  // Removed '-searchHitCount' because it does not exist in your provided schema.
   const projection = isObjectId ? '' : '-adminNotes -__v -createdAt -updatedAt';
 
   const productQuery = ProductModel.findOne(findQuery)
@@ -265,11 +230,11 @@ const getSingleProductFromDB = async (identifier: string) => {
         path: 'parentCategory',
         select: 'name slug',
       },
-    })
-    .populate({
-      path: 'brand',
-      select: 'name slug logo',
     });
+  // .populate({
+  //   path: 'brand',
+  //   select: 'name slug logo',
+  // });
 
   const product = await productQuery.lean();
 

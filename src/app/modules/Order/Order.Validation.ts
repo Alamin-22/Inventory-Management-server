@@ -11,8 +11,8 @@ const CreateOrderSchema = z.object({
   body: z.object({
     customerName: z.string().optional(),
     customerPhone: z.string().optional(),
-    customerEmail: z.string().email().optional(),
-    shippingAddress: z.string().optional(), // Simplified strictly to a single string
+    customerEmail: z.string().email().optional().or(z.literal('')),
+    shippingAddress: z.string().optional(),
     items: z.array(OrderItemSchema).min(1, 'Order must contain at least one item.'),
     paymentInfo: z
       .object({

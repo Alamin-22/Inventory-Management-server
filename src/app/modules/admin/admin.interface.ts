@@ -1,5 +1,6 @@
 import { Model, Types } from 'mongoose';
 import { TAdminPermission } from './admin.constant';
+import { TUserRole } from '../user/user.interface';
 
 export interface IAdmin {
   _id: Types.ObjectId;
@@ -21,6 +22,12 @@ export interface IAdmin {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type TUpdateStaffPayload = {
+  password?: string;
+  role?: TUserRole;
+  admin?: Partial<IAdmin>;
+};
 
 export interface TAdminModel extends Model<IAdmin> {
   // eslint-disable-next-line no-unused-vars

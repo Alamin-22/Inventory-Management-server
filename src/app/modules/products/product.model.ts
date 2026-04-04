@@ -83,7 +83,7 @@ const ProductSchema = new Schema<IProduct>(
     slug: { type: String, required: true, trim: true, unique: true },
 
     category: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
-    brand: { type: Schema.Types.ObjectId, ref: 'Brand', default: null },
+    // brand: { type: Schema.Types.ObjectId, ref: 'Brand', default: null },
 
     description: { type: String },
     videoReviewUrl: { type: String, trim: true },

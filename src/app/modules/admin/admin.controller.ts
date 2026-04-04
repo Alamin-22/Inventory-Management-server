@@ -14,29 +14,25 @@ const getAdminPermissionsMeta: RequestHandler = catchAsync(async (_req, res) => 
   });
 });
 
-const getAllAdmins: RequestHandler = catchAsync(async (req, res) => {
-  const result = await AdminServices.getAllAdmins(req.query);
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Staff retrieved successfully',
-    data: result,
-  });
-});
-
 const getSingleAdmin: RequestHandler = catchAsync(async (req, res) => {
   const result = await AdminServices.getSingleAdmin(req.params.id);
   sendResponse(res, { statusCode: httpStatus.OK, success: true, message: 'Staff profile retrieved ', data: result });
 });
 
-const updateAdmin: RequestHandler = catchAsync(async (req, res) => {
-  const result = await AdminServices.updateAdmin(req.params.id, req.body);
-  sendResponse(res, { statusCode: httpStatus.OK, success: true, message: 'Staff profile updated', data: result });
+const updateStaff = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const result = await AdminServices.updateAdmin(id, req.body, req.user); // Pass req.user here
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Staff updated successfully',
+    data: result,
+  });
 });
 
 export const AdminControllers = {
   getAdminPermissionsMeta,
-  getAllAdmins,
   getSingleAdmin,
-  updateAdmin,
+  updateStaff,
 };

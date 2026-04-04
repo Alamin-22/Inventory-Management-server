@@ -16,14 +16,14 @@ const router = express.Router();
 // Cashiers and stock staff need to view active products to process orders
 router.get(
   '/get_all',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager),
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
   CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_STOCK),
   ProductControllers.getAllProducts,
 );
 
 router.get(
   '/:identifier',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager),
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.manager, USER_ROLE.super_admin),
   CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
   ProductControllers.getSingleProduct,
 );
@@ -88,7 +88,7 @@ router.patch(
 
 router.delete(
   '/permanent_delete',
-  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin), // Restricted explicitly
+  AuthValidationMiddleWare(USER_ROLE.admin, USER_ROLE.super_admin),
   CheckAuthPermissionMiddleware(AdminPermissions.MANAGE_INVENTORY),
   ValidateRequestMiddleWare(productValidationSchemas.permanentDeleteZodSchema),
   ProductControllers.deleteProductsPermanently,

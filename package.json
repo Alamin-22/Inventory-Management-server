@@ -1,6 +1,6 @@
 {
   "name": "inventory-management-server",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.1",
   "main": "index.js",
   "_moduleAliases": {
     "@app": "dist/app",
@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "rimraf dist && npx tsc && npx tsc-alias",
-    "start": "cross-env NODE_ENV=production node dist/.server.js",
+    "start": "cross-env NODE_ENV=production node dist/server.js",
     "start:dev": "cross-env NODE_ENV=development tsx watch src/server.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",

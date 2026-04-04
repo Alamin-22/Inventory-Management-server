@@ -27,6 +27,18 @@ const loginUser: RequestHandler = catchAsync(async (req, res) => {
   });
 });
 
+const getMe: RequestHandler = catchAsync(async (req, res) => {
+  const { id, role } = req.user;
+  const result = await AuthServices.getMe(id, role);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User profile retrieved successfully',
+    data: result,
+  });
+});
+
 const refreshToken: RequestHandler = catchAsync(async (req, res) => {
   const { refreshToken } = req.cookies;
   const result = await AuthServices.refreshToken(refreshToken);
@@ -87,7 +99,7 @@ const resetPassword = catchAsync(async (req, res) => {
 });
 
 const updateSuperAdminEmail: RequestHandler = catchAsync(async (req, res) => {
-  const result = await AuthServices.updateSuperAdminEmail(req.user.userId, req.body);
+  const result = await AuthServices.updateSuperAdminEmail(req.user.id, req.body);
   sendResponse(res, { statusCode: httpStatus.OK, success: true, message: 'Master Key updated.', data: result });
 });
 
@@ -99,4 +111,5 @@ export const AuthControllers = {
   forgetPassword,
   resetPassword,
   updateSuperAdminEmail,
+  getMe,
 };

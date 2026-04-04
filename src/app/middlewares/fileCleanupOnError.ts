@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from 'express';
 import fs from 'fs';
 
 export const fileCleanupOnError = async (err: any, req: Request, _res: Response, next: NextFunction) => {
-  console.log('Error caught in cleanup middleware. Checking for files to delete...');
+  // console.log('Error caught in cleanup middleware. Checking for files to delete...');
 
   // 1. Create a unified array of files to delete
   // eslint-disable-next-line no-undef
