@@ -1,22 +1,30 @@
 import { RequestHandler } from 'express';
 import httpStatus from 'http-status';
-import { config } from '@config/env';
 import { catchAsync } from '@utils/catchAsync';
 import sendResponse from '@utils/sendResponse';
 import { AuthServices } from './auth.service';
 
-const isProduction = config.environment === 'production';
+// const isProduction = config.environment === 'production';
 
 const loginUser: RequestHandler = catchAsync(async (req, res) => {
   const result = await AuthServices.loginUser(req.body);
   const { refreshToken, accessToken, user } = result;
 
+  // res.cookie('refreshToken', refreshToken, {
+  //   httpOnly: true,
+  //   secure: isProduction,
+  //   sameSite: isProduction ? 'none' : 'lax',
+  //   maxAge: 7 * 24 * 60 * 60 * 1000,
+  //   domain: isProduction ? config.client.domain : undefined,
+  // });
+
+  // for render
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: true,
+    sameSite: 'none',
     maxAge: 7 * 24 * 60 * 60 * 1000,
-    domain: isProduction ? config.client.domain : undefined,
+    // domain line REMOVED
   });
 
   sendResponse(res, {
@@ -52,11 +60,19 @@ const refreshToken: RequestHandler = catchAsync(async (req, res) => {
 });
 
 const logout: RequestHandler = catchAsync(async (_req, res) => {
+  // res.clearCookie('refreshToken', {
+  //   httpOnly: true,
+  //   secure: isProduction,
+  //   sameSite: isProduction ? 'none' : 'lax',
+  //   domain: isProduction ? config.client.domain : undefined,
+  // });
+
+  // for render
   res.clearCookie('refreshToken', {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    domain: isProduction ? config.client.domain : undefined,
+    secure: true,
+    sameSite: 'none',
+    // domain line REMOVED
   });
 
   sendResponse(res, {
