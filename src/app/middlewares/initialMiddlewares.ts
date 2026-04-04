@@ -7,6 +7,7 @@ import { sanitizeData } from '@utils/sanitize';
 const allowedOrigins = [
   'http://localhost:3000',
   // 'http://localhost:5173',
+  'https://inventory-management-client-sk8g.onrender.com',
 
   config.client.url,
 ];
