@@ -1,9 +1,11 @@
 ├── .gitignore
 ├── .prettierrc
+├── api
+│   └── index.ts
+├── CHANGELOG.md
 ├── env
 │   └── .env
 ├── eslint.config.mjs
-├── flowChart.txt
 ├── generate-tree.js
 ├── package-lock.json
 ├── package.json
@@ -13,28 +15,20 @@
 │   │   ├── app.ts
 │   │   ├── classes
 │   │   │   ├── AppError.ts
-│   │   │   ├── QueryBuilder.ts
-│   │   │   └── QueryBuilderOne.ts
+│   │   │   └── QueryBuilder.ts
 │   │   ├── Email_Templates
 │   │   │   ├── Authentication-Related
 │   │   │   │   ├── forgotPassword.template.ts
 │   │   │   │   └── verificationEmail.template.ts
-│   │   │   ├── Contact-Related
-│   │   │   │   └── ContactUsNotificationTemplate.ts
 │   │   │   ├── email.utils.ts
 │   │   │   ├── Order-Related
-│   │   │   │   ├── AdminNewOrderNotification.ts
 │   │   │   │   ├── oder.email.interface.ts
 │   │   │   │   ├── OrderConfirmedEmail.ts
-│   │   │   │   ├── OrderExpiredEmail.ts
-│   │   │   │   ├── OrderStatusUpdateEmail.ts
-│   │   │   │   └── OrderSubmittedConfirmation.ts
+│   │   │   │   └── OrderStatusUpdateEmail.ts
 │   │   │   └── Product-Related
-│   │   │       ├── BackInStockEmail.ts
 │   │   │       ├── LowStockNotification.ts
 │   │   │       ├── OutOfStockNotification.ts
-│   │   │       ├── product.email.interface.ts
-│   │   │       └── ReviewNotificationTemplate.ts
+│   │   │       └── product.email.interface.ts
 │   │   ├── interfaces
 │   │   │   ├── error.ts
 │   │   │   └── index.D.ts
@@ -43,6 +37,7 @@
 │   │   ├── middlewares
 │   │   │   ├── AuditLogger.ts
 │   │   │   ├── AuthValidationMiddleWare.ts
+│   │   │   ├── CheckAuthPermissionMiddleware.ts
 │   │   │   ├── fileCleanupOnError.ts
 │   │   │   ├── fileCleanupOnFinish.ts
 │   │   │   ├── globalErrorHandler.ts
@@ -52,13 +47,19 @@
 │   │   │   └── ValidateRequestMiddleWare.ts
 │   │   └── modules
 │   │       ├── admin
-│   │       │   ├── admin.constants.ts
+│   │       │   ├── admin.constant.ts
 │   │       │   ├── admin.controller.ts
 │   │       │   ├── admin.interface.ts
 │   │       │   ├── admin.model.ts
 │   │       │   ├── admin.route.ts
 │   │       │   ├── admin.service.ts
 │   │       │   └── admin.validation.ts
+│   │       ├── Analytics
+│   │       │   ├── Analytics.controller.ts
+│   │       │   ├── Analytics.interface.ts
+│   │       │   ├── Analytics.route.ts
+│   │       │   ├── Analytics.service.ts
+│   │       │   └── Analytics.utils.ts
 │   │       ├── AuditLog
 │   │       │   ├── AuditLog.controller.ts
 │   │       │   ├── AuditLog.interface.ts
@@ -72,13 +73,6 @@
 │   │       │   ├── auth.service.ts
 │   │       │   ├── auth.utils.ts
 │   │       │   └── auth.validation.ts
-│   │       ├── Brand
-│   │       │   ├── Brand.controller.ts
-│   │       │   ├── Brand.interface.ts
-│   │       │   ├── Brand.model.ts
-│   │       │   ├── Brand.route.ts
-│   │       │   ├── Brand.service.ts
-│   │       │   └── Brand.validation.ts
 │   │       ├── Category
 │   │       │   ├── Category.controller.ts
 │   │       │   ├── Category.interface.ts
@@ -86,14 +80,8 @@
 │   │       │   ├── Category.route.ts
 │   │       │   ├── Category.service.ts
 │   │       │   └── Category.validation.ts
-│   │       ├── Common
-│   │       │   ├── Common.controller.ts
-│   │       │   ├── Common.interface.ts
-│   │       │   ├── Common.model.ts
-│   │       │   ├── Common.route.ts
-│   │       │   ├── Common.service.ts
-│   │       │   └── Common.validation.ts
 │   │       ├── customer
+│   │       │   ├── customer.constant.ts
 │   │       │   ├── customer.controller.ts
 │   │       │   ├── customer.interface.ts
 │   │       │   ├── customer.model.ts
@@ -106,13 +94,23 @@
 │   │       │   ├── Order.constant.ts
 │   │       │   ├── Order.controller.ts
 │   │       │   ├── Order.email.ts
-│   │       │   ├── Order.group-buy.service.ts
 │   │       │   ├── Order.interface.ts
 │   │       │   ├── Order.model.ts
 │   │       │   ├── Order.route.ts
 │   │       │   ├── Order.service.ts
 │   │       │   ├── Order.utils.ts
 │   │       │   └── Order.Validation.ts
+│   │       ├── Payment-Related
+│   │       │   └── Transaction
+│   │       │       ├── Transaction.constant.ts
+│   │       │       ├── Transaction.controller.ts
+│   │       │       ├── Transaction.email.ts
+│   │       │       ├── Transaction.interface.ts
+│   │       │       ├── Transaction.model.ts
+│   │       │       ├── Transaction.route.ts
+│   │       │       ├── Transaction.service.ts
+│   │       │       ├── Transaction.utils.ts
+│   │       │       └── Transaction.validation.ts
 │   │       ├── products
 │   │       │   ├── product.constants.ts
 │   │       │   ├── product.controller.ts
@@ -123,10 +121,6 @@
 │   │       │   ├── product.service.ts
 │   │       │   ├── product.utils.ts
 │   │       │   └── product.validation.ts
-│   │       ├── SharedCounter
-│   │       │   ├── SharedCounter.interface.ts
-│   │       │   ├── SharedCounter.model.ts
-│   │       │   └── SharedCounter.utils.ts
 │   │       └── user
 │   │           ├── counter.model.ts
 │   │           ├── user.constants.ts
@@ -146,7 +140,6 @@
 │   │       └── jwtPayload.ts
 │   └── utils
 │       ├── catchAsync.ts
-│       ├── convertToUSD.ts
 │       ├── generateAvatar.ts
 │       ├── generateJWT.ts
 │       ├── index.ts
@@ -157,6 +150,7 @@
 │       └── slugGenerator.ts
 ├── structure.txt
 ├── tsconfig.json
-└── uploads
-    ├── images-1771217845237-356618782
-    └── variants[2][image]-1755530230142-542213617
+├── uploads
+│   ├── images-1771217845237-356618782
+│   └── variants[2][image]-1755530230142-542213617
+└── vercel.json
