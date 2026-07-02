@@ -18,6 +18,17 @@ A robust, modular, and highly secure backend engine designed to power modern ret
 
 ---
 
+## 🌐 Live Application & Repositories
+
+| Component              | Live Endpoint / Application                                                 | GitHub Repository                                                             |
+| :--------------------- | :-------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| **Backend API Engine** | [API Gateway](https://inventory-management-server-1nqc.onrender.com/api/v1) | [Server Repository](https://github.com/Alamin-22/inventory-management-server) |
+| **Frontend Client**    | _(Check client repo for frontend deployment)_                               | [Client Repository](https://github.com/Alamin-22/Inventory-Management-Client) |
+
+> **Note on Cold Starts:** This backend API is hosted on Render's free tier. If the service has been idle, the initial request may take **30–60 seconds** to spin up the container.
+
+---
+
 ## 🚀 Core Features
 
 - **Terminal POS Logic**: Atomic transaction processing with real-time stock validation and automated ledger entries.
@@ -102,6 +113,16 @@ npm run start:dev
 
 ---
 
+## 🚀 Production Deployment (Render)
+
+This project is fully optimized for containerized deployment on Render.
+
+- **Environment Setup**: Add all variables from your `.env` to your Render Environment settings.
+- **Build Command**: `npm install && npm run build`
+- **Start Command**: `npm run start`
+
+---
+
 ## 📝 Changelog & Versioning
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -121,3 +142,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ---
 
 **Developed by Md. Al Amin Mollik.** _Scalable. Secure. Operations-Centric._
+
+```
+
+```
