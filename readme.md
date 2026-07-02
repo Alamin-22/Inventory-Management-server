@@ -2,133 +2,147 @@
 
 ### High-Performance Enterprise Resource Planning & POS Engine
 
+> 🚀 **Project Status: Standalone v1 & Transition to SaaS (v2)**
+>
+> This repository contains the **v1 standalone backend** for the Inventory Management & POS System. It showcases the core REST API architecture, POS transaction logic, and foundational database schemas for a single-business deployment.
+>
+> **What's Next?**
+> I am currently developing **v2**—a complete, multi-tenant B2B SaaS platform where multiple retail businesses and warehouses can register and manage their operations independently on a single unified engine.
+>
+> **Note to Recruiters and Developers:**
+> To protect the proprietary architecture of the SaaS engine, the advanced v2 features (such as multi-tenant database isolation, cross-store inventory syncing, WebSockets for live POS, and scalable B2B logistics) are maintained in a **separate, private repository**. This public v1 repo remains available as a transparent showcase of my backend coding standards, custom query building, and robust domain-driven design.
+
+---
+
 A robust, modular, and highly secure backend engine designed to power modern retail and warehouse operations. Built with **Node.js**, **TypeScript**, and **MongoDB**, this system provides a centralized backbone for Point of Sale (POS) transactions, financial auditing, and real-time inventory intelligence.
+
+---
+
+## 🌐 Live Application & Repositories
+
+| Component              | Live Endpoint / Application                                                 | GitHub Repository                                                             |
+| :--------------------- | :-------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| **Backend API Engine** | [API Gateway](https://inventory-management-server-1nqc.onrender.com/api/v1) | [Server Repository](https://github.com/Alamin-22/inventory-management-server) |
+| **Frontend Client**    | _(Check client repo for frontend deployment)_                               | [Client Repository](https://github.com/Alamin-22/Inventory-Management-Client) |
+
+> **Note on Cold Starts:** This backend API is hosted on Render's free tier. If the service has been idle, the initial request may take **30–60 seconds** to spin up the container.
 
 ---
 
 ## 🚀 Core Features
 
 - **Terminal POS Logic**: Atomic transaction processing with real-time stock validation and automated ledger entries.
-- **Financial Auditing**: Comprehensive transaction tracking (Sales/Refunds) with a permanent audit trail.
+- **Automated Email Notification Engine**: Asynchronous SMTP-based email alerts for Order Confirmations, Status Updates, and critical Low/Out-of-Stock inventory warnings.
+- **Financial Auditing**: Comprehensive transaction tracking (Sales/Refunds) with a permanent, immutable audit trail.
 - **Inventory Intelligence**: Priority-based restock queues and low-stock threshold monitoring via MongoDB Aggregation pipelines.
 - **RBAC Security**: Granular Role-Based Access Control (Super Admin, Admin, Manager) with self-lockout protection.
-- **System Integrity**: Integrated Audit Logs to track administrative interactions and critical system state changes.
-- **Automated Logistics**: Support for multi-tenant configurations, automated SMTP notifications, and Cloudinary-backed media management.
+- **Custom QueryBuilder**: Advanced filtering, searching, and pagination architecture for handling massive inventory datasets efficiently.
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Technical Stack
 
 - **Runtime**: Node.js (v24.x recommended)
 - **Language**: TypeScript (Strict Mode)
 - **Framework**: Express.js
-- **Database**: MongoDB (via Mongoose ODM)
-- **Validation**: Zod (Schema-based validation)
+- **Database & ODM**: MongoDB & Mongoose
+- **Validation**: Zod (Schema-based runtime validation)
 - **Security**: JWT (Stateless Auth), Bcrypt (Password Hashing)
-- **Task Scheduling**: Node-Cron (For automated stock/audit maintenance)
+- **Media Processing**: Cloudinary Integration
+- **Email Service**: Nodemailer (Template-based HTML emails)
 
 ---
 
-## 🏗️ Architectural Pattern
+## 📁 Architectural Pattern & Core Structure
 
-The system follows a **Modular Architecture** combined with a **QueryBuilder** pattern for advanced filtering, searching, and pagination.
+The system follows a strict **Modular / Domain-Driven Architecture**, ensuring maximum scalability and separation of business logic.
 
-- **Routes**: Entry points for the API.
-- **Controllers**: Handling request/response cycles and `catchAsync` wrappers.
-- **Services**: Core business logic and complex DB transactions (Session-based).
-- **Models**: Mongoose schemas with built-in validation.
-
----
+```text
+src/app/
+├── classes/          # Core utilities (AppError, custom QueryBuilder)
+├── Email_Templates/  # HTML email templates (Auth, Orders, Products/LowStock)
+├── middlewares/      # Security, Validation, and global Error Handling
+└── modules/          # Isolated Business Domains:
+    ├── admin/        # Staff management and permissions
+    ├── Analytics/    # Aggregation pipelines for dashboard KPIs
+    ├── AuditLog/     # Immutable tracking for critical system operations
+    ├── auth/         # JWT issuance, verification, and password resets
+    ├── Category/     # Product taxonomy and hierarchy
+    ├── customer/     # CRM and loyalty tracking
+    ├── Order/        # Checkout logic and email dispatches
+    ├── Payment/      # Transaction processing and ledger tracking
+    ├── products/     # Inventory management, media parsing
+    └── user/         # Identity and profile lifecycle
+```
 
 ## ⚙️ Environment Configuration
 
-To run this project locally, create a `.env` file in the root directory and populate it with the following configuration:
+To run this project locally, create a `.env` file inside the `env/` directory using the provided `.env.example` as a template.
 
-### Basic Config
-
-| Variable    | Description                                      |
-| :---------- | :----------------------------------------------- |
-| `PORT`      | Server port (Default: 5000)                      |
-| `NODE_ENV`  | Environment mode (`development` or `production`) |
-| `MONGO_URI` | MongoDB Connection String                        |
-
-### Business & Branding
-
-| Variable        | Description                               |
-| :-------------- | :---------------------------------------- |
-| `COMPANY_NAME`  | Business name used for receipts/dashboard |
-| `LOGO_URL`      | URL for the business logo                 |
-| `SUPPORT_EMAIL` | Default contact for system alerts         |
-
-### Security & Auth
-
-| Variable               | Description                               |
-| :--------------------- | :---------------------------------------- |
-| `ACCESS_TOKEN_SECRET`  | Secret key for JWT Access Tokens          |
-| `REFRESH_TOKEN_SECRET` | Secret key for JWT Refresh Tokens         |
-| `BCRYPT_SALT_ROUNDS`   | Hashing complexity (Default: 10)          |
-| `SUPER_ADMIN_EMAIL`    | Initial seed email for the Master account |
-| `SUPER_ADMIN_PASSWORD` | Initial seed password                     |
-
-### Third-Party Services
-
-| Variable                | Description              |
-| :---------------------- | :----------------------- |
-| `CLOUDINARY_CLOUD_NAME` | Media storage cloud name |
-| `SMTP_USER`             | Mail server username     |
-| `SMTP_PASS`             | Mail server password     |
+Ensure you configure the `SMTP_*` variables to enable the automated Email Notification Engine for orders and stock alerts.
 
 ---
 
-## 📦 Installation & Setup
+## 📦 Installation & Local Setup
 
-1.  **Clone the repository**:
+### 1. Prerequisites
 
-    ```bash
-    git clone <repository-url>
-    cd inventory-management-server
-    ```
+- Node.js (v20+ recommended)
+- TypeScript (`npm install -g typescript`)
+- A MongoDB Atlas Cluster or local instance
 
-2.  **Install Dependencies**:
+### 2. Setup Guide
 
-    ```bash
-    npm install
-    ```
+```bash
+# Clone the repository
+git clone [https://github.com/Alamin-22/inventory-management-server](https://github.com/Alamin-22/inventory-management-server)
+cd inventory-management-server
 
-3.  **Build the Project**:
+# Install dependencies
+npm install
 
-    ```bash
-    npm run build
-    ```
+# Build the TypeScript compilation
+npm run build
 
-4.  **Start Development Server**:
+# Start the development server
+npm run start:dev
 
-    ```bash
-    npm run start:dev
-    ```
+```
 
-5.  **Production Launch**:
-    ```bash
-    npm run start
-    ```
+**Base API Endpoint:** `http://localhost:5000/api/v1`
 
 ---
 
-## 🧪 API Versioning
+## 🚀 Production Deployment (Render)
 
-This project follows strict API versioning. The current version is `v1`.
-**Base Endpoint**: `http://localhost:5000/api/v1`
+This project is fully optimized for containerized deployment on Render.
+
+- **Environment Setup**: Add all variables from your `.env` to your Render Environment settings.
+- **Build Command**: `npm install && npm run build`
+- **Start Command**: `npm run start`
 
 ---
 
 ## 📝 Changelog & Versioning
 
-The project is currently in **Beta Testing**.
-**Current Version**: `1.0.0-beta.1`
+This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-For a detailed history of changes and planned features, please refer to the `CHANGELOG.md` file.
+### [v1.0.0] - Stable Release
+
+- **Initial v1 Release**: Complete baseline for the standalone Inventory Management System.
+- **Core Engine**: Node.js/Express backend with Mongoose ODM and TypeScript.
+- **Terminal POS**: High-speed checkout interface with dynamic cart logic and real-time stock validation.
+- **Financial Ledger**: Transaction auditing for sales and refunds with automated `orderId` linking.
+- **Business Intelligence**: Analytical dashboard featuring MoM (Month-over-Month) growth metrics and priority-based restock queues.
+- **Notification Engine**: Integrated SMTP templates for automated low-stock and order-status emails.
+- **Security**: Role-based access control (RBAC) with self-lockout protection.
+
+> For a detailed history of changes and planned features for the private v2 SaaS engine, please refer to internal development documentation.
 
 ---
 
-Developed by Md. Al Amin Mollik. All rights reserved.
-_Developed with focus on scalability, security, and operational transparency._
+**Developed by Md. Al Amin Mollik.** _Scalable. Secure. Operations-Centric._
+
+```
+
+```
